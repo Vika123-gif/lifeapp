@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Трекер сфер жизни</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-emoji" aria-hidden="true">🎯</span>
+      <div>
+        <h1>Трекер сфер жизни</h1>
+        <p class="subtitle">Модуль «Работа»: проекты, таймлайн, букинг людей</p>
+      </div>
+    </div>
+    <button id="themeToggle" class="icon-btn" type="button" title="Переключить тему" aria-label="Переключить тему">
+      <span id="themeIcon">🌙</span>
+    </button>
+  </header>
+
+  <nav class="sphere-nav" aria-label="Сферы жизни">
+    <button class="sphere-tab active" type="button" data-sphere="work">💼 Работа</button>
+    <button class="sphere-tab disabled" type="button" disabled title="Скоро">❤️ Здоровье</button>
+    <button class="sphere-tab disabled" type="button" disabled title="Скоро">💰 Финансы</button>
+    <button class="sphere-tab disabled" type="button" disabled title="Скоро">🌱 Личное</button>
+    <span class="sphere-nav-note">Другие сферы добавим позже</span>
+  </nav>
+
+  <main>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Таймлайн проектов</h2>
+        <button id="addProject" class="btn btn-primary" type="button">+ Проект</button>
+      </div>
+
+      <div class="filter-row" id="peopleFilterRow">
+        <span class="filter-label">Букинг:</span>
+        <div id="peopleChips" class="chips"></div>
+        <button id="managePeople" class="btn btn-ghost btn-small" type="button">👤 Люди</button>
+      </div>
+
+      <div id="ganttChart" class="gantt-chart">
+        <div id="ganttTooltip" class="tooltip" hidden></div>
+      </div>
+      <p id="ganttEmpty" class="empty-note" hidden>Добавь проект, чтобы увидеть таймлайн.</p>
+
+      <div class="legend" id="statusLegend"></div>
+    </section>
+
+    <section class="card" id="peoplePanel" hidden>
+      <div class="card-head">
+        <h2>Люди</h2>
+        <button id="closePeople" class="btn btn-ghost btn-small" type="button">Закрыть</button>
+      </div>
+      <div class="add-form">
+        <input id="newPersonName" class="name-input" type="text" placeholder="Имя человека" aria-label="Имя человека">
+        <button id="addPersonBtn" class="btn btn-primary" type="button">Добавить</button>
+      </div>
+      <ul id="peopleList" class="people-list"></ul>
+    </section>
+
+    <section class="card" id="projectFormCard" hidden>
+      <div class="card-head">
+        <h2 id="projectFormTitle">Новый проект</h2>
+        <button id="closeProjectForm" class="btn btn-ghost btn-small" type="button">Отмена</button>
+      </div>
+      <div class="project-form">
+        <label class="field">
+          <span>Название</span>
+          <input id="pfName" type="text" placeholder="Например, Редизайн сайта">
+        </label>
+        <div class="field-row">
+          <label class="field">
+            <span>Начало</span>
+            <input id="pfStart" type="date">
+          </label>
+          <label class="field">
+            <span>Конец</span>
+            <input id="pfEnd" type="date">
+          </label>
+        </div>
+        <label class="field">
+          <span>Статус</span>
+          <select id="pfStatus">
+            <option value="planned">Запланирован</option>
+            <option value="active">В работе</option>
+            <option value="paused">На паузе</option>
+            <option value="done">Завершён</option>
+          </select>
+        </label>
+        <div class="field">
+          <span>Люди на проекте</span>
+          <div id="pfPeople" class="chips chips-select"></div>
+        </div>
+        <div class="form-actions">
+          <button id="deleteProjectBtn" class="btn btn-danger-ghost" type="button" hidden>Удалить проект</button>
+          <button id="saveProjectBtn" class="btn btn-primary" type="button">Сохранить</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Список проектов</h2>
+      <ul id="projectList" class="project-list"></ul>
+      <p id="projectListEmpty" class="empty-note" hidden>Пока нет проектов.</p>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <button id="resetAll" class="btn btn-danger-ghost" type="button">Сбросить все данные</button>
+    <span class="footer-note">Данные хранятся только в этом браузере (localStorage)</span>
+  </footer>
+
+</div>
+<script src="script.js"></script>
+</body>
+</html>
