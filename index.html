@@ -45,23 +45,20 @@
 
   <main>
 
-    <section class="card">
-      <div class="card-head">
-        <h2>Таймлайн проектов</h2>
-        <button id="addProject" class="btn btn-primary" type="button">+ Проект</button>
-      </div>
+    <div class="card-head">
+      <h2 class="section-title">Проекты</h2>
+      <button id="addProject" class="btn btn-primary" type="button">+ Новый проект</button>
+    </div>
 
-      <div class="filter-row" id="peopleFilterRow">
-        <span class="filter-label">Букинг:</span>
-        <div id="peopleChips" class="chips"></div>
-        <button id="managePeople" class="btn btn-ghost btn-small" type="button">👤 Люди</button>
-      </div>
+    <div class="filter-row" id="peopleFilterRow">
+      <span class="filter-label">Букинг:</span>
+      <div id="peopleChips" class="chips"></div>
+      <button id="managePeople" class="btn btn-ghost btn-small" type="button">👤 Люди</button>
+    </div>
 
-      <div id="ganttChart" class="gantt-chart">
-        <div id="ganttTooltip" class="tooltip" hidden></div>
-      </div>
-      <p id="ganttEmpty" class="empty-note" hidden>Добавь проект, чтобы увидеть таймлайн.</p>
-    </section>
+    <div id="projectsContainer"></div>
+    <p id="ganttEmpty" class="empty-note" hidden>Добавь проект, чтобы увидеть таймлайн.</p>
+    <div id="ganttTooltip" class="tooltip" hidden></div>
 
     <section class="card" id="peoplePanel" hidden>
       <div class="card-head">
@@ -82,8 +79,12 @@
       </div>
       <div class="project-form">
         <label class="field">
-          <span>Название</span>
-          <input id="pfName" type="text" placeholder="Например, Редизайн сайта">
+          <span>Проект</span>
+          <input id="pfProject" type="text" placeholder="Например, Modivo Veo Challenge">
+        </label>
+        <label class="field">
+          <span>Этап (необязательно)</span>
+          <input id="pfPhase" type="text" placeholder="Например, Сценарий — оставь пустым, если у проекта нет этапов">
         </label>
         <div class="field-row">
           <label class="field">

@@ -3,8 +3,9 @@
 
   const STORAGE_KEY = 'life-tracker-work-v1';
   const ROW_H = 36;
-  const HEADER_H = 28;
+  const HEADER_H = 30;
   const DAY_MS = 86400000;
+  const LABELS_W = 150;
 
   const STATUS = {
     planned: { label: 'Запланирован', icon: '○', varName: '--planned-ink' },
@@ -35,6 +36,9 @@
   function fmtDate(iso) {
     return isoToUTCDate(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', timeZone: 'UTC' });
   }
+  function fmtDateShort(iso) {
+    return isoToUTCDate(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+  }
 
   function seedData() {
     const people = [
@@ -42,22 +46,22 @@
     ];
     const projects = [
       {
-        id: uid(), name: 'Modivo Veo Challenge — Сценарий', status: 'active',
+        id: uid(), project: 'Modivo Veo Challenge', phase: 'Сценарий', status: 'active',
         start: '2026-07-20', end: '2026-07-26', peopleIds: ['p1'],
         notes: 'Дедлайн проекта: 28.08. Нужно 2 видео по 30 сек — форматы 9:16 и 16:9.',
       },
       {
-        id: uid(), name: 'Modivo Veo Challenge — Сторибоды', status: 'planned',
+        id: uid(), project: 'Modivo Veo Challenge', phase: 'Сторибоды', status: 'planned',
         start: '2026-07-27', end: '2026-08-02', peopleIds: ['p1'],
         notes: 'Сторибоды по утверждённому сценарию.',
       },
       {
-        id: uid(), name: 'Modivo Veo Challenge — Создание видео', status: 'planned',
+        id: uid(), project: 'Modivo Veo Challenge', phase: 'Создание видео', status: 'planned',
         start: '2026-08-03', end: '2026-08-28', peopleIds: ['p1'],
         notes: '2 видео по 30 сек (9:16 и 16:9), финальный рендер и сдача до 28.08.',
       },
       {
-        id: uid(), name: 'Cropp', status: 'planned',
+        id: uid(), project: 'Cropp', phase: '', status: 'planned',
         start: '2026-07-24', end: '2026-08-31', peopleIds: ['p1'],
         notes: 'Скоуп пока не определён.',
       },
@@ -91,6 +95,25 @@
     return p ? p.name : '?';
   }
 
+  function rowLabel(task) {
+    return task.phase && task.phase.trim() ? task.phase : task.project;
+  }
+
+  // groups tasks by their parent project, ordered by each group's earliest start date
+  function groupedProjects() {
+    const groups = new Map();
+    state.projects.forEach(t => {
+      if (!groups.has(t.project)) groups.set(t.project, []);
+      groups.get(t.project).push(t);
+    });
+    const list = [...groups.entries()].map(([project, tasks]) => ({
+      project,
+      tasks: [...tasks].sort((a, b) => a.start.localeCompare(b.start)),
+    }));
+    list.sort((a, b) => a.tasks[0].start.localeCompare(b.tasks[0].start));
+    return list;
+  }
+
   // ---------- theme ----------
   const root = document.documentElement;
   const themeIcon = document.getElementById('themeIcon');
@@ -119,7 +142,7 @@
       chip.addEventListener('click', () => {
         if (filterPeople.has(p.id)) filterPeople.delete(p.id); else filterPeople.add(p.id);
         renderPeopleChips();
-        renderGantt();
+        renderProjects();
       });
       el.appendChild(chip);
     });
@@ -159,7 +182,7 @@
         save();
         renderPeopleList();
         renderPeopleChips();
-        renderGantt();
+        renderProjects();
       });
       li.appendChild(name);
       li.appendChild(del);
@@ -182,16 +205,17 @@
 
   // ---------- project form ----------
   const projectFormCard = document.getElementById('projectFormCard');
-  function openProjectForm(project) {
-    editingProjectId = project ? project.id : null;
-    pfSelectedPeople = new Set(project ? project.peopleIds : []);
-    document.getElementById('projectFormTitle').textContent = project ? 'Редактировать проект' : 'Новый проект';
-    document.getElementById('pfName').value = project ? project.name : '';
-    document.getElementById('pfStart').value = project ? project.start : todayISO();
-    document.getElementById('pfEnd').value = project ? project.end : addDaysISO(todayISO(), 14);
-    document.getElementById('pfStatus').value = project ? project.status : 'planned';
-    document.getElementById('pfNotes').value = project ? (project.notes || '') : '';
-    document.getElementById('deleteProjectBtn').hidden = !project;
+  function openProjectForm(task, presetProject) {
+    editingProjectId = task ? task.id : null;
+    pfSelectedPeople = new Set(task ? task.peopleIds : []);
+    document.getElementById('projectFormTitle').textContent = task ? 'Редактировать этап' : 'Новый проект / этап';
+    document.getElementById('pfProject').value = task ? task.project : (presetProject || '');
+    document.getElementById('pfPhase').value = task ? (task.phase || '') : '';
+    document.getElementById('pfStart').value = task ? task.start : todayISO();
+    document.getElementById('pfEnd').value = task ? task.end : addDaysISO(todayISO(), 14);
+    document.getElementById('pfStatus').value = task ? task.status : 'planned';
+    document.getElementById('pfNotes').value = task ? (task.notes || '') : '';
+    document.getElementById('deleteProjectBtn').hidden = !task;
     renderPfPeople();
     projectFormCard.hidden = false;
     projectFormCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -226,70 +250,66 @@
   document.getElementById('closeProjectForm').addEventListener('click', closeProjectForm);
 
   document.getElementById('saveProjectBtn').addEventListener('click', () => {
-    const name = document.getElementById('pfName').value.trim();
+    const project = document.getElementById('pfProject').value.trim();
+    const phase = document.getElementById('pfPhase').value.trim();
     const start = document.getElementById('pfStart').value;
     const end = document.getElementById('pfEnd').value;
     const status = document.getElementById('pfStatus').value;
     const notes = document.getElementById('pfNotes').value.trim();
-    if (!name) { alert('Укажи название проекта'); return; }
+    if (!project) { alert('Укажи название проекта'); return; }
     if (!start || !end) { alert('Укажи даты начала и конца'); return; }
     if (end < start) { alert('Дата конца раньше даты начала'); return; }
 
     if (editingProjectId) {
       const pr = state.projects.find(x => x.id === editingProjectId);
-      Object.assign(pr, { name, start, end, status, notes, peopleIds: [...pfSelectedPeople] });
+      Object.assign(pr, { project, phase, start, end, status, notes, peopleIds: [...pfSelectedPeople] });
     } else {
-      state.projects.push({ id: uid(), name, start, end, status, notes, peopleIds: [...pfSelectedPeople] });
+      state.projects.push({ id: uid(), project, phase, start, end, status, notes, peopleIds: [...pfSelectedPeople] });
     }
     save();
     closeProjectForm();
-    renderGantt();
+    renderProjects();
   });
 
   document.getElementById('deleteProjectBtn').addEventListener('click', () => {
     const pr = state.projects.find(x => x.id === editingProjectId);
     if (!pr) return;
-    if (!confirm(`Удалить проект «${pr.name}»?`)) return;
+    if (!confirm(`Удалить «${rowLabel(pr)}»?`)) return;
     state.projects = state.projects.filter(x => x.id !== editingProjectId);
     save();
     closeProjectForm();
-    renderGantt();
+    renderProjects();
   });
 
-  // ---------- gantt chart ----------
+  // ---------- tooltip (shared, viewport-fixed so it works across every project card) ----------
   const tooltip = document.getElementById('ganttTooltip');
-  function showTooltip(x, y, html) {
+  function showTooltip(evt, html) {
     tooltip.innerHTML = html;
-    tooltip.style.left = x + 'px';
-    tooltip.style.top = y + 'px';
+    tooltip.style.left = evt.clientX + 'px';
+    tooltip.style.top = evt.clientY + 'px';
     tooltip.hidden = false;
   }
   function hideTooltip() { tooltip.hidden = true; }
 
-  function renderGantt() {
-    const chartEl = document.getElementById('ganttChart');
-    const emptyEl = document.getElementById('ganttEmpty');
-    // clear previous (keep tooltip node)
-    [...chartEl.children].forEach(c => { if (c !== tooltip) c.remove(); });
-
-    const projects = state.projects;
-    emptyEl.hidden = projects.length > 0;
-    if (projects.length === 0) return;
+  // ---------- one project's mini Gantt ----------
+  function buildGanttChart(tasks) {
+    const chartEl = document.createElement('div');
+    chartEl.className = 'gantt-chart';
 
     const t = todayISO();
-    let minStart = projects.reduce((m, p) => p.start < m ? p.start : m, projects[0].start);
-    let maxEnd = projects.reduce((m, p) => p.end > m ? p.end : m, projects[0].end);
+    let minStart = tasks.reduce((m, p) => p.start < m ? p.start : m, tasks[0].start);
+    let maxEnd = tasks.reduce((m, p) => p.end > m ? p.end : m, tasks[0].end);
     minStart = addDaysISO(minStart < t ? minStart : t, -3);
     maxEnd = addDaysISO(maxEnd > t ? maxEnd : t, 4);
 
-    const totalDays = Math.max(1, Math.round((new Date(maxEnd) - new Date(minStart)) / DAY_MS));
-    const availableWidth = chartEl.getBoundingClientRect().width - 150; // minus labels column
-    const pxPerDay = Math.max(8, Math.min(40, availableWidth / totalDays));
+    const totalDays = Math.max(1, Math.round((isoToUTCDate(maxEnd) - isoToUTCDate(minStart)) / DAY_MS));
+    const availableWidth = Math.max(280, (chartEl.ownerDocument.documentElement.clientWidth || 900) - LABELS_W - 120);
+    const pxPerDay = Math.max(16, Math.min(48, availableWidth / totalDays));
     const svgWidth = Math.max(availableWidth, totalDays * pxPerDay);
-    const svgHeight = HEADER_H + projects.length * ROW_H;
+    const svgHeight = HEADER_H + tasks.length * ROW_H;
 
     function xForDate(iso) {
-      return Math.round((new Date(iso) - new Date(minStart)) / DAY_MS * pxPerDay);
+      return Math.round((isoToUTCDate(iso) - isoToUTCDate(minStart)) / DAY_MS * pxPerDay);
     }
 
     // labels column
@@ -298,12 +318,11 @@
     const labelHeader = document.createElement('div');
     labelHeader.className = 'gantt-label-header';
     labelsCol.appendChild(labelHeader);
-    projects.forEach(pr => {
+    tasks.forEach(pr => {
       const row = document.createElement('div');
       row.className = 'gantt-label-row';
-      row.dataset.pid = pr.id;
-      row.title = pr.name;
-      row.textContent = pr.name;
+      row.title = rowLabel(pr);
+      row.textContent = rowLabel(pr);
       if (isDimmed(pr)) row.classList.add('gantt-row-dim');
       labelsCol.appendChild(row);
     });
@@ -317,14 +336,14 @@
     svg.setAttribute('height', svgHeight);
     svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
     svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', 'Диаграмма Ганта по проектам');
+    svg.setAttribute('aria-label', 'Диаграмма Ганта по этапам проекта');
 
-    // month gridlines + labels
-    const cursor = isoToUTCDate(minStart);
-    cursor.setUTCDate(1);
+    // week gridlines (every Monday) — thin, subtle, with a short date tick
+    const weekCursor = isoToUTCDate(minStart);
+    while (weekCursor.getUTCDay() !== 1) weekCursor.setUTCDate(weekCursor.getUTCDate() - 1);
     const maxEndDate = isoToUTCDate(maxEnd);
-    while (cursor <= maxEndDate) {
-      const iso = utcDateToISO(cursor);
+    while (weekCursor <= maxEndDate) {
+      const iso = utcDateToISO(weekCursor);
       if (iso >= minStart) {
         const x = xForDate(iso);
         const line = document.createElementNS(svgNS, 'line');
@@ -333,19 +352,44 @@
         line.setAttribute('stroke', 'var(--gridline)');
         line.setAttribute('stroke-width', '1');
         svg.appendChild(line);
+        const wLabel = document.createElementNS(svgNS, 'text');
+        wLabel.setAttribute('x', x + 3);
+        wLabel.setAttribute('y', HEADER_H - 4);
+        wLabel.setAttribute('fill', 'var(--text-muted)');
+        wLabel.setAttribute('font-size', '9.5');
+        wLabel.textContent = fmtDateShort(iso);
+        svg.appendChild(wLabel);
+      }
+      weekCursor.setUTCDate(weekCursor.getUTCDate() + 7);
+    }
+
+    // month gridlines + labels (bolder, drawn on top of week lines)
+    const monthCursor = isoToUTCDate(minStart);
+    monthCursor.setUTCDate(1);
+    while (monthCursor <= maxEndDate) {
+      const iso = utcDateToISO(monthCursor);
+      if (iso >= minStart) {
+        const x = xForDate(iso);
+        const line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', x); line.setAttribute('x2', x);
+        line.setAttribute('y1', HEADER_H); line.setAttribute('y2', svgHeight);
+        line.setAttribute('stroke', 'var(--baseline)');
+        line.setAttribute('stroke-width', '1.5');
+        svg.appendChild(line);
         const label = document.createElementNS(svgNS, 'text');
         label.setAttribute('x', x + 4);
-        label.setAttribute('y', HEADER_H - 10);
-        label.setAttribute('fill', 'var(--text-muted)');
+        label.setAttribute('y', 12);
+        label.setAttribute('fill', 'var(--text-secondary)');
         label.setAttribute('font-size', '11');
-        label.textContent = cursor.toLocaleDateString('ru-RU', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+        label.setAttribute('font-weight', '700');
+        label.textContent = monthCursor.toLocaleDateString('ru-RU', { month: 'short', year: 'numeric', timeZone: 'UTC' });
         svg.appendChild(label);
       }
-      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+      monthCursor.setUTCMonth(monthCursor.getUTCMonth() + 1);
     }
 
     // row separators
-    projects.forEach((pr, i) => {
+    tasks.forEach((pr, i) => {
       const y = HEADER_H + i * ROW_H + ROW_H;
       const sep = document.createElementNS(svgNS, 'line');
       sep.setAttribute('x1', 0); sep.setAttribute('x2', svgWidth);
@@ -361,21 +405,30 @@
       const todayLine = document.createElementNS(svgNS, 'line');
       todayLine.setAttribute('x1', xToday); todayLine.setAttribute('x2', xToday);
       todayLine.setAttribute('y1', HEADER_H); todayLine.setAttribute('y2', svgHeight);
-      todayLine.setAttribute('stroke', 'var(--text-secondary)');
+      todayLine.setAttribute('stroke', 'var(--series-1)');
       todayLine.setAttribute('stroke-width', '1.5');
       svg.appendChild(todayLine);
+      const flagY = HEADER_H + 3;
+      const todayFlag = document.createElementNS(svgNS, 'rect');
+      todayFlag.setAttribute('x', xToday + 3);
+      todayFlag.setAttribute('y', flagY);
+      todayFlag.setAttribute('width', 48);
+      todayFlag.setAttribute('height', 14);
+      todayFlag.setAttribute('rx', 4);
+      todayFlag.setAttribute('fill', 'var(--series-1)');
+      svg.appendChild(todayFlag);
       const todayLabel = document.createElementNS(svgNS, 'text');
-      todayLabel.setAttribute('x', xToday + 4);
-      todayLabel.setAttribute('y', 12);
-      todayLabel.setAttribute('fill', 'var(--text-secondary)');
-      todayLabel.setAttribute('font-size', '10');
-      todayLabel.setAttribute('font-weight', '600');
+      todayLabel.setAttribute('x', xToday + 7);
+      todayLabel.setAttribute('y', flagY + 10);
+      todayLabel.setAttribute('fill', '#fff');
+      todayLabel.setAttribute('font-size', '9.5');
+      todayLabel.setAttribute('font-weight', '700');
       todayLabel.textContent = 'Сегодня';
       svg.appendChild(todayLabel);
     }
 
     // bars
-    projects.forEach((pr, i) => {
+    tasks.forEach((pr, i) => {
       const y = HEADER_H + i * ROW_H + (ROW_H - 18) / 2;
       const x1 = xForDate(pr.start);
       const x2 = xForDate(addDaysISO(pr.end, 1));
@@ -394,11 +447,8 @@
 
       const peopleStr = pr.peopleIds.length ? pr.peopleIds.map(personName).join(', ') : '—';
       const showTip = (evt) => {
-        const rowEl = chartEl.querySelector(`.gantt-label-row[data-pid="${pr.id}"]`);
-        const rect2 = chartEl.getBoundingClientRect();
-        const px = (evt.clientX ?? (rowEl ? rowEl.getBoundingClientRect().right : 0)) - rect2.left;
-        showTooltip(px, HEADER_H + i * ROW_H, `
-          <div><b>${escapeHtml(pr.name)}</b></div>
+        showTooltip(evt, `
+          <div><b>${escapeHtml(rowLabel(pr))}</b></div>
           <div>${STATUS[pr.status].icon} ${STATUS[pr.status].label} · ${fmtDate(pr.start)} – ${fmtDate(pr.end)}</div>
           <div class="tt-people">👤 ${escapeHtml(peopleStr)}</div>
           ${pr.notes ? `<div class="tt-notes">${escapeHtml(pr.notes)}</div>` : ''}
@@ -420,10 +470,45 @@
     inner.appendChild(scrollCol);
     chartEl.appendChild(inner);
 
-    if (t >= minStart && t <= maxEnd) {
-      const visibleWidth = scrollCol.clientWidth;
-      scrollCol.scrollLeft = Math.max(0, xForDate(t) - visibleWidth / 2);
-    }
+    requestAnimationFrame(() => {
+      if (t >= minStart && t <= maxEnd) {
+        const visibleWidth = scrollCol.clientWidth;
+        scrollCol.scrollLeft = Math.max(0, xForDate(t) - visibleWidth / 2);
+      }
+    });
+
+    return chartEl;
+  }
+
+  // ---------- all project cards ----------
+  function renderProjects() {
+    const container = document.getElementById('projectsContainer');
+    const emptyEl = document.getElementById('ganttEmpty');
+    container.innerHTML = '';
+
+    const groups = groupedProjects();
+    emptyEl.hidden = groups.length > 0;
+
+    groups.forEach(({ project, tasks }) => {
+      const card = document.createElement('section');
+      card.className = 'card';
+
+      const head = document.createElement('div');
+      head.className = 'card-head';
+      const h2 = document.createElement('h2');
+      h2.textContent = project;
+      const addPhaseBtn = document.createElement('button');
+      addPhaseBtn.type = 'button';
+      addPhaseBtn.className = 'btn btn-ghost btn-small';
+      addPhaseBtn.textContent = '+ Этап';
+      addPhaseBtn.addEventListener('click', () => openProjectForm(null, project));
+      head.appendChild(h2);
+      head.appendChild(addPhaseBtn);
+
+      card.appendChild(head);
+      card.appendChild(buildGanttChart(tasks));
+      container.appendChild(card);
+    });
   }
 
   function escapeHtml(str) {
@@ -442,11 +527,11 @@
     renderAll();
   });
 
-  window.addEventListener('resize', () => { renderGantt(); });
+  window.addEventListener('resize', () => { renderProjects(); });
 
   function renderAll() {
     renderPeopleChips();
-    renderGantt();
+    renderProjects();
   }
 
   renderAll();
