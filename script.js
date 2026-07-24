@@ -62,8 +62,13 @@
         notes: 'Сторибоды по утверждённому сценарию.',
       },
       {
+        id: uid(), project: 'Modivo Veo Challenge', phase: 'Клиентский фидбек', status: 'planned',
+        start: '2026-08-03', end: '2026-08-05', peopleIds: ['p1'],
+        notes: 'Ждём фидбек клиента по сторибордам перед стартом съёмки/монтажа.',
+      },
+      {
         id: uid(), project: 'Modivo Veo Challenge', phase: 'Создание видео', status: 'planned',
-        start: '2026-08-03', end: '2026-08-28', peopleIds: ['p1'],
+        start: '2026-08-06', end: '2026-08-28', peopleIds: ['p1'],
         notes: '2 видео по 30 сек (9:16 и 16:9), финальный рендер и сдача до 28.08.',
       },
       {
