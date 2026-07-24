@@ -160,7 +160,6 @@
         renderPeopleList();
         renderPeopleChips();
         renderGantt();
-        renderProjectList();
       });
       li.appendChild(name);
       li.appendChild(del);
@@ -245,7 +244,6 @@
     save();
     closeProjectForm();
     renderGantt();
-    renderProjectList();
   });
 
   document.getElementById('deleteProjectBtn').addEventListener('click', () => {
@@ -256,45 +254,7 @@
     save();
     closeProjectForm();
     renderGantt();
-    renderProjectList();
   });
-
-  // ---------- project list (accessible table view) ----------
-  function renderProjectList() {
-    const ul = document.getElementById('projectList');
-    const empty = document.getElementById('projectListEmpty');
-    ul.innerHTML = '';
-    const sorted = [...state.projects].sort((a, b) => a.start.localeCompare(b.start));
-    empty.hidden = sorted.length > 0;
-    sorted.forEach(pr => {
-      const li = document.createElement('li');
-      li.className = 'project-row';
-      const dot = document.createElement('span');
-      dot.className = 'project-status-dot';
-      dot.style.background = `var(${STATUS[pr.status].varName})`;
-      const main = document.createElement('div');
-      main.className = 'project-main';
-      const nameEl = document.createElement('div');
-      nameEl.className = 'project-name';
-      nameEl.textContent = pr.name;
-      const meta = document.createElement('div');
-      meta.className = 'project-meta';
-      const peopleStr = pr.peopleIds.length ? pr.peopleIds.map(personName).join(', ') : 'никто не забронирован';
-      meta.textContent = `${STATUS[pr.status].icon} ${STATUS[pr.status].label} · ${fmtDate(pr.start)} – ${fmtDate(pr.end)} · ${peopleStr}`;
-      main.appendChild(nameEl);
-      main.appendChild(meta);
-      if (pr.notes) {
-        const notesEl = document.createElement('div');
-        notesEl.className = 'project-notes';
-        notesEl.textContent = pr.notes;
-        main.appendChild(notesEl);
-      }
-      li.appendChild(dot);
-      li.appendChild(main);
-      li.addEventListener('click', () => openProjectForm(pr));
-      ul.appendChild(li);
-    });
-  }
 
   // ---------- gantt chart ----------
   const tooltip = document.getElementById('ganttTooltip');
@@ -487,7 +447,6 @@
   function renderAll() {
     renderPeopleChips();
     renderGantt();
-    renderProjectList();
   }
 
   renderAll();
