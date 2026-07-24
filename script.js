@@ -56,6 +56,11 @@
         start: '2026-08-03', end: '2026-08-28', peopleIds: ['p1'],
         notes: '2 видео по 30 сек (9:16 и 16:9), финальный рендер и сдача до 28.08.',
       },
+      {
+        id: uid(), name: 'Cropp', status: 'planned',
+        start: '2026-07-24', end: '2026-08-31', peopleIds: ['p1'],
+        notes: 'Скоуп пока не определён.',
+      },
     ];
     return { people, projects };
   }
