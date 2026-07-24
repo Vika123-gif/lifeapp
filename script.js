@@ -37,17 +37,25 @@
   }
 
   function seedData() {
-    const t = todayISO();
     const people = [
       { id: 'p1', name: 'Я' },
-      { id: 'p2', name: 'Аня' },
-      { id: 'p3', name: 'Игорь' },
     ];
     const projects = [
-      { id: uid(), name: 'Аудит процессов', status: 'done', start: addDaysISO(t, -30), end: addDaysISO(t, -10), peopleIds: ['p1'] },
-      { id: uid(), name: 'Редизайн сайта', status: 'active', start: addDaysISO(t, -8), end: addDaysISO(t, 18), peopleIds: ['p1', 'p2'] },
-      { id: uid(), name: 'Миграция базы', status: 'paused', start: addDaysISO(t, -3), end: addDaysISO(t, 12), peopleIds: ['p2', 'p3'] },
-      { id: uid(), name: 'Запуск рекламы', status: 'planned', start: addDaysISO(t, 20), end: addDaysISO(t, 40), peopleIds: ['p3'] },
+      {
+        id: uid(), name: 'Modivo Veo Challenge — Сценарий', status: 'active',
+        start: '2026-07-20', end: '2026-07-26', peopleIds: ['p1'],
+        notes: 'Дедлайн проекта: 28.08. Нужно 2 видео по 30 сек — форматы 9:16 и 16:9.',
+      },
+      {
+        id: uid(), name: 'Modivo Veo Challenge — Сторибоды', status: 'planned',
+        start: '2026-07-27', end: '2026-08-02', peopleIds: ['p1'],
+        notes: 'Сторибоды по утверждённому сценарию.',
+      },
+      {
+        id: uid(), name: 'Modivo Veo Challenge — Создание видео', status: 'planned',
+        start: '2026-08-03', end: '2026-08-28', peopleIds: ['p1'],
+        notes: '2 видео по 30 сек (9:16 и 16:9), финальный рендер и сдача до 28.08.',
+      },
     ];
     return { people, projects };
   }
@@ -181,6 +189,7 @@
     document.getElementById('pfStart').value = project ? project.start : todayISO();
     document.getElementById('pfEnd').value = project ? project.end : addDaysISO(todayISO(), 14);
     document.getElementById('pfStatus').value = project ? project.status : 'planned';
+    document.getElementById('pfNotes').value = project ? (project.notes || '') : '';
     document.getElementById('deleteProjectBtn').hidden = !project;
     renderPfPeople();
     projectFormCard.hidden = false;
@@ -220,15 +229,16 @@
     const start = document.getElementById('pfStart').value;
     const end = document.getElementById('pfEnd').value;
     const status = document.getElementById('pfStatus').value;
+    const notes = document.getElementById('pfNotes').value.trim();
     if (!name) { alert('Укажи название проекта'); return; }
     if (!start || !end) { alert('Укажи даты начала и конца'); return; }
     if (end < start) { alert('Дата конца раньше даты начала'); return; }
 
     if (editingProjectId) {
       const pr = state.projects.find(x => x.id === editingProjectId);
-      Object.assign(pr, { name, start, end, status, peopleIds: [...pfSelectedPeople] });
+      Object.assign(pr, { name, start, end, status, notes, peopleIds: [...pfSelectedPeople] });
     } else {
-      state.projects.push({ id: uid(), name, start, end, status, peopleIds: [...pfSelectedPeople] });
+      state.projects.push({ id: uid(), name, start, end, status, notes, peopleIds: [...pfSelectedPeople] });
     }
     save();
     closeProjectForm();
@@ -273,6 +283,12 @@
       meta.textContent = `${STATUS[pr.status].icon} ${STATUS[pr.status].label} · ${fmtDate(pr.start)} – ${fmtDate(pr.end)} · ${peopleStr}`;
       main.appendChild(nameEl);
       main.appendChild(meta);
+      if (pr.notes) {
+        const notesEl = document.createElement('div');
+        notesEl.className = 'project-notes';
+        notesEl.textContent = pr.notes;
+        main.appendChild(notesEl);
+      }
       li.appendChild(dot);
       li.appendChild(main);
       li.addEventListener('click', () => openProjectForm(pr));
@@ -449,6 +465,7 @@
           <div><b>${escapeHtml(pr.name)}</b></div>
           <div>${STATUS[pr.status].icon} ${STATUS[pr.status].label} · ${fmtDate(pr.start)} – ${fmtDate(pr.end)}</div>
           <div class="tt-people">👤 ${escapeHtml(peopleStr)}</div>
+          ${pr.notes ? `<div class="tt-notes">${escapeHtml(pr.notes)}</div>` : ''}
         `);
       };
       rect.addEventListener('pointerenter', showTip);
