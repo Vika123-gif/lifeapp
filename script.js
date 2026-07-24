@@ -106,6 +106,44 @@
     return p ? p.name : '?';
   }
 
+  // In-page confirm/alert: native confirm()/alert() are blocked in sandboxed
+  // (artifact) contexts, where they silently no-op — so the app must not rely on them.
+  const confirmOverlay = document.getElementById('confirmOverlay');
+  const confirmTextEl = document.getElementById('confirmText');
+  const confirmOkBtn = document.getElementById('confirmOk');
+  const confirmCancelBtn = document.getElementById('confirmCancel');
+  let confirmResolve = null;
+  function confirmDialog(message) {
+    confirmTextEl.textContent = message;
+    confirmOverlay.hidden = false;
+    return new Promise(resolve => { confirmResolve = resolve; });
+  }
+  function settleConfirm(result) {
+    confirmOverlay.hidden = true;
+    const r = confirmResolve;
+    confirmResolve = null;
+    if (r) r(result);
+  }
+  confirmOkBtn.addEventListener('click', () => settleConfirm(true));
+  confirmCancelBtn.addEventListener('click', () => settleConfirm(false));
+  confirmOverlay.addEventListener('click', (e) => { if (e.target === confirmOverlay) settleConfirm(false); });
+  document.addEventListener('keydown', (e) => {
+    if (!confirmOverlay.hidden && e.key === 'Escape') settleConfirm(false);
+  });
+
+  const toastEl = document.getElementById('toast');
+  let toastTimer = null;
+  function toast(message) {
+    toastEl.textContent = message;
+    toastEl.hidden = false;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toastEl.classList.remove('show');
+      setTimeout(() => { toastEl.hidden = true; }, 250);
+    }, 2600);
+  }
+
   function rowLabel(task) {
     return task.phase && task.phase.trim() ? task.phase : task.project;
   }
@@ -185,8 +223,8 @@
       del.className = 'icon-only';
       del.textContent = '✕';
       del.title = 'Удалить человека';
-      del.addEventListener('click', () => {
-        if (!confirm(`Удалить «${p.name}» из списка людей?`)) return;
+      del.addEventListener('click', async () => {
+        if (!await confirmDialog(`Удалить «${p.name}» из списка людей?`)) return;
         state.people = state.people.filter(x => x.id !== p.id);
         state.projects.forEach(pr => { pr.peopleIds = pr.peopleIds.filter(id => id !== p.id); });
         filterPeople.delete(p.id);
@@ -267,9 +305,9 @@
     const end = document.getElementById('pfEnd').value;
     const status = document.getElementById('pfStatus').value;
     const notes = document.getElementById('pfNotes').value.trim();
-    if (!project) { alert('Укажи название проекта'); return; }
-    if (!start || !end) { alert('Укажи даты начала и конца'); return; }
-    if (end < start) { alert('Дата конца раньше даты начала'); return; }
+    if (!project) { toast('Укажи название проекта'); return; }
+    if (!start || !end) { toast('Укажи даты начала и конца'); return; }
+    if (end < start) { toast('Дата конца раньше даты начала'); return; }
 
     if (editingProjectId) {
       const pr = state.projects.find(x => x.id === editingProjectId);
@@ -282,10 +320,10 @@
     renderProjects();
   });
 
-  document.getElementById('deleteProjectBtn').addEventListener('click', () => {
+  document.getElementById('deleteProjectBtn').addEventListener('click', async () => {
     const pr = state.projects.find(x => x.id === editingProjectId);
     if (!pr) return;
-    if (!confirm(`Удалить «${rowLabel(pr)}»?`)) return;
+    if (!await confirmDialog(`Удалить «${rowLabel(pr)}»?`)) return;
     state.projects = state.projects.filter(x => x.id !== editingProjectId);
     save();
     closeProjectForm();
@@ -678,13 +716,14 @@
   }
 
   // ---------- reset ----------
-  document.getElementById('resetAll').addEventListener('click', () => {
-    if (!confirm('Удалить все проекты и людей без возможности восстановления?')) return;
+  document.getElementById('resetAll').addEventListener('click', async () => {
+    if (!await confirmDialog('Сбросить всё к исходным данным? Текущие проекты и люди будут заменены.')) return;
     localStorage.removeItem(STORAGE_KEY);
     state = seedData();
     filterPeople.clear();
     save();
     renderAll();
+    toast('Данные сброшены');
   });
 
   window.addEventListener('resize', () => { renderProjects(); });

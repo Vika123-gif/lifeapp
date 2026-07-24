@@ -128,6 +128,19 @@
   </footer>
 
 </div>
+
+<div id="confirmOverlay" class="modal-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmText">
+    <p id="confirmText" class="modal-text"></p>
+    <div class="modal-actions">
+      <button id="confirmCancel" class="btn btn-ghost" type="button">Отмена</button>
+      <button id="confirmOk" class="btn btn-primary" type="button">Подтвердить</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
 <script src="script.js"></script>
 </body>
 </html>
