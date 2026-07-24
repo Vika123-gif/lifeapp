@@ -454,12 +454,52 @@
           ${pr.notes ? `<div class="tt-notes">${escapeHtml(pr.notes)}</div>` : ''}
         `);
       };
-      rect.addEventListener('pointerenter', showTip);
-      rect.addEventListener('pointermove', showTip);
+      const showDragTip = (evt, newStart, newEnd) => {
+        showTooltip(evt, `
+          <div><b>${escapeHtml(rowLabel(pr))}</b></div>
+          <div>${fmtDate(newStart)} – ${fmtDate(newEnd)}</div>
+        `);
+      };
+
+      let drag = null; // { startClientX, origX, moved }
+      rect.addEventListener('pointerdown', (evt) => {
+        evt.preventDefault();
+        rect.setPointerCapture(evt.pointerId);
+        drag = { startClientX: evt.clientX, origX: parseFloat(rect.getAttribute('x')), moved: false };
+        rect.classList.add('gantt-bar-dragging');
+      });
+      rect.addEventListener('pointermove', (evt) => {
+        if (!drag) { showTip(evt); return; }
+        const dxPx = evt.clientX - drag.startClientX;
+        if (Math.abs(dxPx) > 3) drag.moved = true;
+        const daysDelta = Math.round(dxPx / pxPerDay);
+        rect.setAttribute('x', drag.origX + daysDelta * pxPerDay);
+        if (drag.moved) showDragTip(evt, addDaysISO(pr.start, daysDelta), addDaysISO(pr.end, daysDelta));
+      });
+      const endDrag = (evt) => {
+        if (!drag) return;
+        rect.releasePointerCapture(evt.pointerId);
+        rect.classList.remove('gantt-bar-dragging');
+        const dxPx = evt.clientX - drag.startClientX;
+        const daysDelta = Math.round(dxPx / pxPerDay);
+        const wasDrag = drag.moved;
+        drag = null;
+        hideTooltip();
+        if (wasDrag && daysDelta !== 0) {
+          pr.start = addDaysISO(pr.start, daysDelta);
+          pr.end = addDaysISO(pr.end, daysDelta);
+          save();
+          renderProjects();
+        } else if (!wasDrag) {
+          openProjectForm(pr);
+        }
+      };
+      rect.addEventListener('pointerup', endDrag);
+      rect.addEventListener('pointercancel', endDrag);
+      rect.addEventListener('pointerenter', (evt) => { if (!drag) showTip(evt); });
       rect.addEventListener('focus', showTip);
-      rect.addEventListener('pointerleave', hideTooltip);
-      rect.addEventListener('blur', hideTooltip);
-      rect.addEventListener('click', () => openProjectForm(pr));
+      rect.addEventListener('pointerleave', () => { if (!drag) hideTooltip(); });
+      rect.addEventListener('blur', () => { if (!drag) hideTooltip(); });
       svg.appendChild(rect);
     });
 
