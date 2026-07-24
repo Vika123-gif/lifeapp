@@ -64,6 +64,13 @@
   let editingProjectId = null;
   let pfSelectedPeople = new Set();
   let filterPeople = new Set();
+  let filterStatus = new Set();
+
+  function isDimmed(pr) {
+    const peopleMiss = filterPeople.size > 0 && !pr.peopleIds.some(id => filterPeople.has(id));
+    const statusMiss = filterStatus.size > 0 && !filterStatus.has(pr.status);
+    return peopleMiss || statusMiss;
+  }
 
   function save() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ people: state.people, projects: state.projects }));
@@ -225,6 +232,7 @@
     }
     save();
     closeProjectForm();
+    renderStatusTiles();
     renderGantt();
     renderProjectList();
   });
@@ -236,6 +244,7 @@
     state.projects = state.projects.filter(x => x.id !== editingProjectId);
     save();
     closeProjectForm();
+    renderStatusTiles();
     renderGantt();
     renderProjectList();
   });
@@ -271,21 +280,27 @@
     });
   }
 
-  // ---------- status legend ----------
-  function renderLegend() {
-    const el = document.getElementById('statusLegend');
+  // ---------- status tiles (legend + filter, "smart systems" style) ----------
+  function renderStatusTiles() {
+    const el = document.getElementById('statusTiles');
     el.innerHTML = '';
     Object.entries(STATUS).forEach(([key, meta]) => {
-      const item = document.createElement('div');
-      item.className = 'legend-item';
-      const swatch = document.createElement('span');
-      swatch.className = 'legend-swatch';
-      swatch.style.background = `var(${meta.varName})`;
-      const label = document.createElement('span');
-      label.textContent = `${meta.icon} ${meta.label}`;
-      item.appendChild(swatch);
-      item.appendChild(label);
-      el.appendChild(item);
+      const count = state.projects.filter(p => p.status === key).length;
+      const tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = `status-tile ${key}` + (filterStatus.has(key) ? ' on' : '');
+      tile.innerHTML = `
+        <span class="status-tile-icon">${meta.icon}</span>
+        <span class="status-tile-toggle" aria-hidden="true"></span>
+        <span class="status-tile-count">${count}</span>
+        <span class="status-tile-label">${escapeHtml(meta.label)}</span>
+      `;
+      tile.addEventListener('click', () => {
+        if (filterStatus.has(key)) filterStatus.delete(key); else filterStatus.add(key);
+        renderStatusTiles();
+        renderGantt();
+      });
+      el.appendChild(tile);
     });
   }
 
@@ -337,7 +352,7 @@
       row.dataset.pid = pr.id;
       row.title = pr.name;
       row.textContent = pr.name;
-      if (filterPeople.size && !pr.peopleIds.some(id => filterPeople.has(id))) row.classList.add('gantt-row-dim');
+      if (isDimmed(pr)) row.classList.add('gantt-row-dim');
       labelsCol.appendChild(row);
     });
 
@@ -412,7 +427,7 @@
       const y = HEADER_H + i * ROW_H + (ROW_H - 18) / 2;
       const x1 = xForDate(pr.start);
       const x2 = xForDate(addDaysISO(pr.end, 1));
-      const dimmed = filterPeople.size > 0 && !pr.peopleIds.some(id => filterPeople.has(id));
+      const dimmed = isDimmed(pr);
 
       const rect = document.createElementNS(svgNS, 'rect');
       rect.setAttribute('x', x1);
@@ -478,7 +493,7 @@
 
   function renderAll() {
     renderPeopleChips();
-    renderLegend();
+    renderStatusTiles();
     renderGantt();
     renderProjectList();
   }
