@@ -77,12 +77,9 @@
   let editingProjectId = null;
   let pfSelectedPeople = new Set();
   let filterPeople = new Set();
-  let filterStatus = new Set();
 
   function isDimmed(pr) {
-    const peopleMiss = filterPeople.size > 0 && !pr.peopleIds.some(id => filterPeople.has(id));
-    const statusMiss = filterStatus.size > 0 && !filterStatus.has(pr.status);
-    return peopleMiss || statusMiss;
+    return filterPeople.size > 0 && !pr.peopleIds.some(id => filterPeople.has(id));
   }
 
   function save() {
@@ -247,7 +244,6 @@
     }
     save();
     closeProjectForm();
-    renderStatusTiles();
     renderGantt();
     renderProjectList();
   });
@@ -259,7 +255,6 @@
     state.projects = state.projects.filter(x => x.id !== editingProjectId);
     save();
     closeProjectForm();
-    renderStatusTiles();
     renderGantt();
     renderProjectList();
   });
@@ -298,30 +293,6 @@
       li.appendChild(main);
       li.addEventListener('click', () => openProjectForm(pr));
       ul.appendChild(li);
-    });
-  }
-
-  // ---------- status tiles (legend + filter, "smart systems" style) ----------
-  function renderStatusTiles() {
-    const el = document.getElementById('statusTiles');
-    el.innerHTML = '';
-    Object.entries(STATUS).forEach(([key, meta]) => {
-      const count = state.projects.filter(p => p.status === key).length;
-      const tile = document.createElement('button');
-      tile.type = 'button';
-      tile.className = `status-tile ${key}` + (filterStatus.has(key) ? ' on' : '');
-      tile.innerHTML = `
-        <span class="status-tile-icon">${meta.icon}</span>
-        <span class="status-tile-toggle" aria-hidden="true"></span>
-        <span class="status-tile-count">${count}</span>
-        <span class="status-tile-label">${escapeHtml(meta.label)}</span>
-      `;
-      tile.addEventListener('click', () => {
-        if (filterStatus.has(key)) filterStatus.delete(key); else filterStatus.add(key);
-        renderStatusTiles();
-        renderGantt();
-      });
-      el.appendChild(tile);
     });
   }
 
@@ -515,7 +486,6 @@
 
   function renderAll() {
     renderPeopleChips();
-    renderStatusTiles();
     renderGantt();
     renderProjectList();
   }
