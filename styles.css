@@ -338,6 +338,7 @@ body {
 .gantt-bar-fill.dragging { filter: brightness(1.18); transition: none; }
 .gantt-bar-hit { cursor: grab; touch-action: none; }
 .gantt-bar-hit:active { cursor: grabbing; }
+.gantt-bar-handle { cursor: ew-resize; touch-action: none; }
 .gantt-row-dim { opacity: 0.25; }
 .empty-note { color: var(--text-muted); font-size: 13px; margin: 8px 0 0; }
 

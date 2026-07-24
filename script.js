@@ -428,35 +428,88 @@
     }
 
     // bars
+    const HANDLE_W = 8;
     tasks.forEach((pr, i) => {
       const y = HEADER_H + i * ROW_H + (ROW_H - 18) / 2;
-      const x1 = xForDate(pr.start);
-      const x2 = xForDate(addDaysISO(pr.end, 1));
+      const rowTop = HEADER_H + i * ROW_H + 1;
+      const rowH = ROW_H - 2;
       const dimmed = isDimmed(pr);
 
-      const barWidth = Math.max(6, x2 - x1);
       const rect = document.createElementNS(svgNS, 'rect');
-      rect.setAttribute('x', x1);
       rect.setAttribute('y', y);
-      rect.setAttribute('width', barWidth);
       rect.setAttribute('height', 18);
       rect.setAttribute('rx', 4);
       rect.setAttribute('fill', `var(${STATUS[pr.status].varName})`);
       rect.setAttribute('opacity', dimmed ? 0.25 : 0.92);
-      rect.setAttribute('pointer-events', 'none'); // purely decorative — the hit rect below handles interaction
+      rect.setAttribute('pointer-events', 'none'); // purely decorative — the hit rects handle interaction
       rect.classList.add('gantt-bar-fill');
 
-      // Transparent hit target spanning the full row height: the visible bar is
-      // only 18px tall, too thin to reliably grab with a mouse or a finger.
-      const hit = document.createElementNS(svgNS, 'rect');
-      hit.setAttribute('x', x1);
-      hit.setAttribute('y', HEADER_H + i * ROW_H + 1);
-      hit.setAttribute('width', barWidth);
-      hit.setAttribute('height', ROW_H - 2);
-      hit.setAttribute('fill', 'transparent');
-      hit.setAttribute('pointer-events', 'all');
-      hit.classList.add('gantt-bar-hit');
-      hit.tabIndex = 0;
+      // Transparent hit targets spanning the full row height (the visible bar is
+      // only 18px tall, too thin to grab precisely with a mouse or a finger):
+      // a middle zone to move the whole bar, and two edge zones to resize it —
+      // shrink/stretch the start or the end independently.
+      const hitMove = document.createElementNS(svgNS, 'rect');
+      hitMove.setAttribute('y', rowTop);
+      hitMove.setAttribute('height', rowH);
+      hitMove.setAttribute('fill', 'transparent');
+      hitMove.setAttribute('pointer-events', 'all');
+      hitMove.classList.add('gantt-bar-hit');
+      hitMove.tabIndex = 0;
+
+      const hitStart = document.createElementNS(svgNS, 'rect');
+      hitStart.setAttribute('y', rowTop);
+      hitStart.setAttribute('width', HANDLE_W);
+      hitStart.setAttribute('height', rowH);
+      hitStart.setAttribute('fill', 'transparent');
+      hitStart.setAttribute('pointer-events', 'all');
+      hitStart.classList.add('gantt-bar-handle');
+
+      const hitEnd = document.createElementNS(svgNS, 'rect');
+      hitEnd.setAttribute('y', rowTop);
+      hitEnd.setAttribute('width', HANDLE_W);
+      hitEnd.setAttribute('height', rowH);
+      hitEnd.setAttribute('fill', 'transparent');
+      hitEnd.setAttribute('pointer-events', 'all');
+      hitEnd.classList.add('gantt-bar-handle');
+
+      const gripStart = document.createElementNS(svgNS, 'rect');
+      gripStart.setAttribute('y', y + 4);
+      gripStart.setAttribute('width', 3);
+      gripStart.setAttribute('height', 10);
+      gripStart.setAttribute('rx', 1.5);
+      gripStart.setAttribute('fill', 'rgba(255,255,255,0.7)');
+      gripStart.setAttribute('pointer-events', 'none');
+      gripStart.classList.add('gantt-bar-grip');
+
+      const gripEnd = gripStart.cloneNode();
+
+      // Positions every visual/hit element from a start/end pixel range. Reused
+      // for the initial layout and for every live update while dragging.
+      function layout(px1, px2) {
+        const w = Math.max(6, px2 - px1);
+        rect.setAttribute('x', px1);
+        rect.setAttribute('width', w);
+        if (w >= HANDLE_W * 2 + 10) {
+          hitStart.setAttribute('x', px1);
+          hitEnd.setAttribute('x', px2 - HANDLE_W);
+          hitMove.setAttribute('x', px1 + HANDLE_W);
+          hitMove.setAttribute('width', Math.max(1, w - HANDLE_W * 2));
+          hitStart.style.display = '';
+          hitEnd.style.display = '';
+          gripStart.setAttribute('x', px1 + 2);
+          gripEnd.setAttribute('x', px2 - 5);
+          gripStart.style.display = '';
+          gripEnd.style.display = '';
+        } else {
+          hitMove.setAttribute('x', px1);
+          hitMove.setAttribute('width', w);
+          hitStart.style.display = 'none';
+          hitEnd.style.display = 'none';
+          gripStart.style.display = 'none';
+          gripEnd.style.display = 'none';
+        }
+      }
+      layout(xForDate(pr.start), xForDate(addDaysISO(pr.end, 1)));
 
       const peopleStr = pr.peopleIds.length ? pr.peopleIds.map(personName).join(', ') : '—';
       const showTip = (evt) => {
@@ -474,21 +527,30 @@
         `);
       };
 
-      // Dragging is implemented with window-level listeners (not setPointerCapture,
-      // which is unreliable on SVG elements in some browsers) so a drag started on
-      // the hit target keeps tracking the pointer even once it leaves its bounds.
-      // All interaction is bound to `hit` (the larger transparent target), never
-      // to the thin decorative `rect`, which would be too small to grab reliably.
-      let drag = null; // { startClientX, origHitX, origRectX, moved }
+      // Dragging (move and resize alike) is implemented with window-level
+      // listeners rather than setPointerCapture, which is unreliable on SVG
+      // elements in some browsers, so a drag keeps tracking the pointer even
+      // once it leaves the element it started on.
+      let drag = null; // { mode: 'move'|'start'|'end', startClientX, origStart, origEnd, moved }
       const onDragMove = (evt) => {
         if (!drag) return;
         const dxPx = evt.clientX - drag.startClientX;
         if (Math.abs(dxPx) > 3) drag.moved = true;
         const daysDelta = Math.round(dxPx / pxPerDay);
-        const offset = daysDelta * pxPerDay;
-        hit.setAttribute('x', drag.origHitX + offset);
-        rect.setAttribute('x', drag.origRectX + offset);
-        if (drag.moved) showDragTip(evt, addDaysISO(pr.start, daysDelta), addDaysISO(pr.end, daysDelta));
+        let newStart = drag.origStart;
+        let newEnd = drag.origEnd;
+        if (drag.mode === 'move') {
+          newStart = addDaysISO(drag.origStart, daysDelta);
+          newEnd = addDaysISO(drag.origEnd, daysDelta);
+        } else if (drag.mode === 'start') {
+          newStart = addDaysISO(drag.origStart, daysDelta);
+          if (newStart > drag.origEnd) newStart = drag.origEnd;
+        } else {
+          newEnd = addDaysISO(drag.origEnd, daysDelta);
+          if (newEnd < drag.origStart) newEnd = drag.origStart;
+        }
+        layout(xForDate(newStart), xForDate(addDaysISO(newEnd, 1)));
+        if (drag.moved) showDragTip(evt, newStart, newEnd);
       };
       const onDragEnd = (evt) => {
         if (!drag) return;
@@ -499,37 +561,55 @@
         const dxPx = evt.clientX - drag.startClientX;
         const daysDelta = Math.round(dxPx / pxPerDay);
         const wasDrag = drag.moved;
+        const mode = drag.mode;
+        let newStart = drag.origStart;
+        let newEnd = drag.origEnd;
+        if (mode === 'move') {
+          newStart = addDaysISO(drag.origStart, daysDelta);
+          newEnd = addDaysISO(drag.origEnd, daysDelta);
+        } else if (mode === 'start') {
+          newStart = addDaysISO(drag.origStart, daysDelta);
+          if (newStart > drag.origEnd) newStart = drag.origEnd;
+        } else {
+          newEnd = addDaysISO(drag.origEnd, daysDelta);
+          if (newEnd < drag.origStart) newEnd = drag.origStart;
+        }
         drag = null;
         hideTooltip();
-        if (wasDrag && daysDelta !== 0) {
-          pr.start = addDaysISO(pr.start, daysDelta);
-          pr.end = addDaysISO(pr.end, daysDelta);
+        if (wasDrag && (newStart !== pr.start || newEnd !== pr.end)) {
+          pr.start = newStart;
+          pr.end = newEnd;
           save();
           renderProjects();
         } else if (!wasDrag) {
+          layout(xForDate(pr.start), xForDate(addDaysISO(pr.end, 1))); // snap back
           openProjectForm(pr);
+        } else {
+          layout(xForDate(pr.start), xForDate(addDaysISO(pr.end, 1))); // snap back, nothing changed
         }
       };
-      hit.addEventListener('pointerdown', (evt) => {
+      const startDrag = (mode) => (evt) => {
         if (evt.button !== undefined && evt.button !== 0) return;
         evt.preventDefault();
-        drag = {
-          startClientX: evt.clientX,
-          origHitX: parseFloat(hit.getAttribute('x')),
-          origRectX: parseFloat(rect.getAttribute('x')),
-          moved: false,
-        };
+        drag = { mode, startClientX: evt.clientX, origStart: pr.start, origEnd: pr.end, moved: false };
         rect.classList.add('dragging');
         window.addEventListener('pointermove', onDragMove);
         window.addEventListener('pointerup', onDragEnd);
         window.addEventListener('pointercancel', onDragEnd);
-      });
-      hit.addEventListener('pointerenter', (evt) => { if (!drag) { rect.classList.add('hovered'); showTip(evt); } });
-      hit.addEventListener('focus', showTip);
-      hit.addEventListener('pointerleave', () => { if (!drag) { rect.classList.remove('hovered'); hideTooltip(); } });
-      hit.addEventListener('blur', () => { if (!drag) hideTooltip(); });
+      };
+      hitMove.addEventListener('pointerdown', startDrag('move'));
+      hitStart.addEventListener('pointerdown', startDrag('start'));
+      hitEnd.addEventListener('pointerdown', startDrag('end'));
+      hitMove.addEventListener('pointerenter', (evt) => { if (!drag) { rect.classList.add('hovered'); showTip(evt); } });
+      hitMove.addEventListener('focus', showTip);
+      hitMove.addEventListener('pointerleave', () => { if (!drag) { rect.classList.remove('hovered'); hideTooltip(); } });
+      hitMove.addEventListener('blur', () => { if (!drag) hideTooltip(); });
       svg.appendChild(rect);
-      svg.appendChild(hit);
+      svg.appendChild(gripStart);
+      svg.appendChild(gripEnd);
+      svg.appendChild(hitMove);
+      svg.appendChild(hitStart);
+      svg.appendChild(hitEnd);
     });
 
     scrollCol.appendChild(svg);
