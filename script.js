@@ -43,6 +43,12 @@
   function seedData() {
     const people = [
       { id: 'p1', name: 'Я' },
+      { id: uid(), name: 'Павер' },
+      { id: uid(), name: 'Оля' },
+      { id: uid(), name: 'Наталья' },
+      { id: uid(), name: 'Артур' },
+      { id: uid(), name: 'Войтек' },
+      { id: uid(), name: 'Дизайнер' },
     ];
     const projects = [
       {
