@@ -434,16 +434,29 @@
       const x2 = xForDate(addDaysISO(pr.end, 1));
       const dimmed = isDimmed(pr);
 
+      const barWidth = Math.max(6, x2 - x1);
       const rect = document.createElementNS(svgNS, 'rect');
       rect.setAttribute('x', x1);
       rect.setAttribute('y', y);
-      rect.setAttribute('width', Math.max(6, x2 - x1));
+      rect.setAttribute('width', barWidth);
       rect.setAttribute('height', 18);
       rect.setAttribute('rx', 4);
       rect.setAttribute('fill', `var(${STATUS[pr.status].varName})`);
       rect.setAttribute('opacity', dimmed ? 0.25 : 0.92);
-      rect.classList.add('gantt-bar');
-      rect.tabIndex = 0;
+      rect.setAttribute('pointer-events', 'none'); // purely decorative — the hit rect below handles interaction
+      rect.classList.add('gantt-bar-fill');
+
+      // Transparent hit target spanning the full row height: the visible bar is
+      // only 18px tall, too thin to reliably grab with a mouse or a finger.
+      const hit = document.createElementNS(svgNS, 'rect');
+      hit.setAttribute('x', x1);
+      hit.setAttribute('y', HEADER_H + i * ROW_H + 1);
+      hit.setAttribute('width', barWidth);
+      hit.setAttribute('height', ROW_H - 2);
+      hit.setAttribute('fill', 'transparent');
+      hit.setAttribute('pointer-events', 'all');
+      hit.classList.add('gantt-bar-hit');
+      hit.tabIndex = 0;
 
       const peopleStr = pr.peopleIds.length ? pr.peopleIds.map(personName).join(', ') : '—';
       const showTip = (evt) => {
@@ -461,25 +474,28 @@
         `);
       };
 
-      let drag = null; // { startClientX, origX, moved }
-      rect.addEventListener('pointerdown', (evt) => {
-        evt.preventDefault();
-        rect.setPointerCapture(evt.pointerId);
-        drag = { startClientX: evt.clientX, origX: parseFloat(rect.getAttribute('x')), moved: false };
-        rect.classList.add('gantt-bar-dragging');
-      });
-      rect.addEventListener('pointermove', (evt) => {
-        if (!drag) { showTip(evt); return; }
+      // Dragging is implemented with window-level listeners (not setPointerCapture,
+      // which is unreliable on SVG elements in some browsers) so a drag started on
+      // the hit target keeps tracking the pointer even once it leaves its bounds.
+      // All interaction is bound to `hit` (the larger transparent target), never
+      // to the thin decorative `rect`, which would be too small to grab reliably.
+      let drag = null; // { startClientX, origHitX, origRectX, moved }
+      const onDragMove = (evt) => {
+        if (!drag) return;
         const dxPx = evt.clientX - drag.startClientX;
         if (Math.abs(dxPx) > 3) drag.moved = true;
         const daysDelta = Math.round(dxPx / pxPerDay);
-        rect.setAttribute('x', drag.origX + daysDelta * pxPerDay);
+        const offset = daysDelta * pxPerDay;
+        hit.setAttribute('x', drag.origHitX + offset);
+        rect.setAttribute('x', drag.origRectX + offset);
         if (drag.moved) showDragTip(evt, addDaysISO(pr.start, daysDelta), addDaysISO(pr.end, daysDelta));
-      });
-      const endDrag = (evt) => {
+      };
+      const onDragEnd = (evt) => {
         if (!drag) return;
-        rect.releasePointerCapture(evt.pointerId);
-        rect.classList.remove('gantt-bar-dragging');
+        window.removeEventListener('pointermove', onDragMove);
+        window.removeEventListener('pointerup', onDragEnd);
+        window.removeEventListener('pointercancel', onDragEnd);
+        rect.classList.remove('dragging');
         const dxPx = evt.clientX - drag.startClientX;
         const daysDelta = Math.round(dxPx / pxPerDay);
         const wasDrag = drag.moved;
@@ -494,13 +510,26 @@
           openProjectForm(pr);
         }
       };
-      rect.addEventListener('pointerup', endDrag);
-      rect.addEventListener('pointercancel', endDrag);
-      rect.addEventListener('pointerenter', (evt) => { if (!drag) showTip(evt); });
-      rect.addEventListener('focus', showTip);
-      rect.addEventListener('pointerleave', () => { if (!drag) hideTooltip(); });
-      rect.addEventListener('blur', () => { if (!drag) hideTooltip(); });
+      hit.addEventListener('pointerdown', (evt) => {
+        if (evt.button !== undefined && evt.button !== 0) return;
+        evt.preventDefault();
+        drag = {
+          startClientX: evt.clientX,
+          origHitX: parseFloat(hit.getAttribute('x')),
+          origRectX: parseFloat(rect.getAttribute('x')),
+          moved: false,
+        };
+        rect.classList.add('dragging');
+        window.addEventListener('pointermove', onDragMove);
+        window.addEventListener('pointerup', onDragEnd);
+        window.addEventListener('pointercancel', onDragEnd);
+      });
+      hit.addEventListener('pointerenter', (evt) => { if (!drag) { rect.classList.add('hovered'); showTip(evt); } });
+      hit.addEventListener('focus', showTip);
+      hit.addEventListener('pointerleave', () => { if (!drag) { rect.classList.remove('hovered'); hideTooltip(); } });
+      hit.addEventListener('blur', () => { if (!drag) hideTooltip(); });
       svg.appendChild(rect);
+      svg.appendChild(hit);
     });
 
     scrollCol.appendChild(svg);

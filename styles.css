@@ -333,9 +333,11 @@ body {
 .gantt-label-row:last-child { border-bottom: none; }
 .gantt-scroll { flex: 1; overflow-x: auto; background: var(--surface-1); }
 .gantt-scroll svg { display: block; }
-.gantt-bar { cursor: grab; touch-action: none; transition: filter .1s, opacity .15s; }
-.gantt-bar:hover { filter: brightness(1.12); }
-.gantt-bar-dragging { cursor: grabbing; filter: brightness(1.18); transition: none; }
+.gantt-bar-fill { transition: filter .1s, opacity .15s; }
+.gantt-bar-fill.hovered { filter: brightness(1.12); }
+.gantt-bar-fill.dragging { filter: brightness(1.18); transition: none; }
+.gantt-bar-hit { cursor: grab; touch-action: none; }
+.gantt-bar-hit:active { cursor: grabbing; }
 .gantt-row-dim { opacity: 0.25; }
 .empty-note { color: var(--text-muted); font-size: 13px; margin: 8px 0 0; }
 
