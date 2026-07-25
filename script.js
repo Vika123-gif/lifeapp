@@ -964,72 +964,93 @@
 
     const strip = document.createElement('div');
     strip.className = 'day-strip';
+    const chipByIso = {};
     for (let iso = minStart; iso <= maxEnd; iso = addDaysISO(iso, 1)) {
-      const d = isoToUTCDate(iso);
+      const dayIso = iso;
+      const d = isoToUTCDate(dayIso);
       const dow = d.getUTCDay();
       const chip = document.createElement('button');
       chip.type = 'button';
-      chip.className = 'day-chip'
-        + (iso === selected ? ' selected' : '')
-        + ((dow === 0 || dow === 6) ? ' weekend' : '');
+      chip.className = 'day-chip' + ((dow === 0 || dow === 6) ? ' weekend' : '');
       const dowStr = d.toLocaleDateString('ru-RU', { weekday: 'short', timeZone: 'UTC' });
       chip.innerHTML = `
         <span class="d-dow">${escapeHtml(dowStr)}</span>
         <span class="d-num">${d.getUTCDate()}</span>
-        <span class="d-ico">${plans[iso] ? plans[iso].icon : '·'}</span>
+        <span class="d-ico">${plans[dayIso] ? plans[dayIso].icon : '·'}</span>
       `;
-      chip.addEventListener('click', () => {
-        selectedDayByTrip[projectName] = iso;
-        renderProjects();
-      });
+      // Update the detail in place — do NOT re-render the whole page, or the
+      // window scroll position jumps back to the top on every day switch.
+      chip.addEventListener('click', () => selectDay(dayIso));
+      chipByIso[dayIso] = chip;
       strip.appendChild(chip);
     }
     wrap.appendChild(strip);
 
-    const plan = plans[selected] || {};
     const detail = document.createElement('div');
     detail.className = 'day-detail';
-    const title = document.createElement('div');
-    title.className = 'day-detail-title';
-    const dateStr = isoToUTCDate(selected).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
-    title.textContent = `${plan.icon ? plan.icon + ' ' : ''}${dateStr}${plan.title ? ' — ' + plan.title : ''}`;
-    const text = document.createElement('textarea');
-    text.className = 'day-detail-text';
-    text.rows = Math.min(12, Math.max(4, (plan.text || '').split('\n').length + 1));
-    text.placeholder = 'Что делаем в этот день? Пиши прямо сюда — сохранится само.';
-    text.value = plan.text || '';
-    text.addEventListener('change', () => {
-      if (!plans[selected]) plans[selected] = { icon: '📍', title: '', text: '' };
-      plans[selected].text = text.value.trim();
-      save();
-    });
-    detail.appendChild(title);
-    detail.appendChild(text);
-    // Google Maps links for this day's places (from the trip map data)
-    const tripData = TRIP_MAPS[projectName];
-    if (tripData) {
-      const pts = tripData.points.filter(p => p.day === selected);
-      if (pts.length) {
-        const links = document.createElement('div');
-        links.className = 'day-links';
-        pts.forEach(p => {
-          const a = document.createElement('a');
-          a.className = 'day-link';
-          a.href = gmapsPointUrl(p);
-          a.target = '_blank';
-          a.rel = 'noopener';
-          a.textContent = `📍 ${p.name.replace(/\s*\(.*\)$/, '')}`;
-          links.appendChild(a);
-        });
-        detail.appendChild(links);
-      }
-    }
     wrap.appendChild(detail);
 
-    // center the selected chip in the strip once mounted (horizontal only,
-    // so the page itself never jumps)
+    function renderDetail() {
+      const sel = selectedDayByTrip[projectName];
+      const plan = plans[sel] || {};
+      detail.innerHTML = '';
+
+      const title = document.createElement('div');
+      title.className = 'day-detail-title';
+      const dateStr = isoToUTCDate(sel).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+      title.textContent = `${plan.icon ? plan.icon + ' ' : ''}${dateStr}${plan.title ? ' — ' + plan.title : ''}`;
+
+      const text = document.createElement('textarea');
+      text.className = 'day-detail-text';
+      text.rows = Math.min(12, Math.max(4, (plan.text || '').split('\n').length + 1));
+      text.placeholder = 'Что делаем в этот день? Пиши прямо сюда — сохранится само.';
+      text.value = plan.text || '';
+      text.addEventListener('change', () => {
+        if (!plans[sel]) plans[sel] = { icon: '📍', title: '', text: '' };
+        plans[sel].text = text.value.trim();
+        save();
+        const ico = chipByIso[sel] && chipByIso[sel].querySelector('.d-ico');
+        if (ico) ico.textContent = plans[sel].icon;
+      });
+      detail.appendChild(title);
+      detail.appendChild(text);
+
+      // Google Maps links for this day's places (from the trip map data)
+      const tripData = TRIP_MAPS[projectName];
+      if (tripData) {
+        const pts = tripData.points.filter(p => p.day === sel);
+        if (pts.length) {
+          const links = document.createElement('div');
+          links.className = 'day-links';
+          pts.forEach(p => {
+            const a = document.createElement('a');
+            a.className = 'day-link';
+            a.href = gmapsPointUrl(p);
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = `📍 ${p.name.replace(/\s*\(.*\)$/, '')}`;
+            links.appendChild(a);
+          });
+          detail.appendChild(links);
+        }
+      }
+    }
+
+    function selectDay(iso) {
+      selectedDayByTrip[projectName] = iso;
+      Object.entries(chipByIso).forEach(([k, el]) => el.classList.toggle('selected', k === iso));
+      renderDetail();
+      // keep the chosen chip centred in the strip; horizontal only, so the
+      // page's own vertical scroll never moves
+      const sel = chipByIso[iso];
+      if (sel) strip.scrollLeft = Math.max(0, sel.offsetLeft - strip.clientWidth / 2 + sel.offsetWidth / 2);
+    }
+
+    // initial state
+    Object.entries(chipByIso).forEach(([k, el]) => el.classList.toggle('selected', k === selected));
+    renderDetail();
     requestAnimationFrame(() => {
-      const sel = strip.querySelector('.day-chip.selected');
+      const sel = chipByIso[selected];
       if (sel) strip.scrollLeft = Math.max(0, sel.offsetLeft - strip.clientWidth / 2 + sel.offsetWidth / 2);
     });
 
