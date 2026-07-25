@@ -203,6 +203,11 @@
     return task.phase && task.phase.trim() ? task.phase : task.project;
   }
 
+  // client-feedback phases are coloured differently, matched by their name
+  function isFeedback(task) {
+    return /фидбек|feedback/i.test(task.phase || '');
+  }
+
   // groups tasks by their parent project, ordered by each group's earliest start date
   function groupedProjects() {
     const groups = new Map();
@@ -559,11 +564,14 @@
       const rowH = ROW_H - 2;
       const dimmed = isDimmed(pr);
 
+      // client-feedback phases get their own colour, whatever their status
+      const fillVar = isFeedback(pr) ? '--feedback-ink' : STATUS[pr.status].varName;
+
       const rect = document.createElementNS(svgNS, 'rect');
       rect.setAttribute('y', y);
       rect.setAttribute('height', 18);
       rect.setAttribute('rx', 4);
-      rect.setAttribute('fill', `var(${STATUS[pr.status].varName})`);
+      rect.setAttribute('fill', `var(${fillVar})`);
       rect.setAttribute('opacity', dimmed ? 0.25 : 0.92);
       rect.setAttribute('pointer-events', 'none'); // purely decorative — the hit rects handle interaction
       rect.classList.add('gantt-bar-fill');
