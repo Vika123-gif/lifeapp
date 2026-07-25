@@ -16,7 +16,7 @@
         <span class="brand-emoji" aria-hidden="true">🎯</span>
         <div>
           <h1>С возвращением!</h1>
-          <p class="subtitle">Модуль «Работа»: проекты, таймлайн, букинг людей</p>
+          <p class="subtitle" id="heroSubtitle">Модуль «Работа»: проекты, таймлайн, букинг людей</p>
         </div>
       </div>
       <div class="hero-actions">
@@ -31,6 +31,9 @@
       <button class="sphere-tab active" type="button" data-sphere="work">
         <span class="tab-icon">💼</span><span class="tab-label">Работа</span>
       </button>
+      <button class="sphere-tab" type="button" data-sphere="travel">
+        <span class="tab-icon">✈️</span><span class="tab-label">Путешествия</span>
+      </button>
       <button class="sphere-tab disabled" type="button" disabled title="Скоро">
         <span class="tab-icon">❤️</span><span class="tab-label">Здоровье</span>
       </button>
@@ -40,27 +43,24 @@
       <button class="sphere-tab disabled" type="button" disabled title="Скоро">
         <span class="tab-icon">🌱</span><span class="tab-label">Личное</span>
       </button>
-      <button class="sphere-tab disabled" type="button" disabled title="Скоро">
-        <span class="tab-icon">✈️</span><span class="tab-label">Путешествия</span>
-      </button>
     </nav>
   </header>
 
   <main>
 
     <div class="card-head">
-      <h2 class="section-title">Проекты</h2>
+      <h2 class="section-title" id="sectionTitle">Проекты</h2>
       <button id="addProject" class="btn btn-primary" type="button">+ Новый проект</button>
     </div>
 
     <div class="filter-row" id="peopleFilterRow">
-      <span class="filter-label">Букинг:</span>
+      <span class="filter-label" id="filterLabel">Букинг:</span>
       <div id="peopleChips" class="chips"></div>
       <button id="managePeople" class="btn btn-ghost btn-small" type="button">👤 Люди</button>
     </div>
 
     <div id="projectsContainer"></div>
-    <p id="ganttEmpty" class="empty-note" hidden>Добавь проект, чтобы увидеть таймлайн.</p>
+    <p id="ganttEmpty" class="empty-note" hidden>Пока пусто. Нажми «+», чтобы добавить.</p>
     <div id="ganttTooltip" class="tooltip" hidden></div>
 
     <section class="card" id="peoplePanel" hidden>

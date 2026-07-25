@@ -132,6 +132,16 @@
         notes: '',
       },
     ];
+    // everything above belongs to the Работа sphere
+    projects.forEach(p => { p.sphere = 'work'; });
+
+    // ---- Путешествия ----
+    projects.push({
+      id: uid(), sphere: 'travel', project: 'Италия на машине', phase: '', status: 'planned',
+      start: '2026-08-07', end: '2026-08-23', peopleIds: [P.me],
+      notes: 'Поездка на машине.',
+    });
+
     return { people, projects };
   }
 
@@ -147,6 +157,29 @@
   let editingProjectId = null;
   let pfSelectedPeople = new Set();
   let filterPeople = new Set();
+  let activeSphere = localStorage.getItem('active-sphere') || 'work';
+
+  // per-sphere wording so the same UI reads naturally for projects and for trips
+  const SPHERES = {
+    work: {
+      subtitle: 'Модуль «Работа»: проекты, таймлайн, букинг людей',
+      sectionTitle: 'Проекты',
+      addLabel: '+ Новый проект',
+      filterLabel: 'Букинг:',
+      emptyNote: 'Пока нет проектов. Нажми «+ Новый проект».',
+      formProjectLabel: 'Проект',
+      formProjectPlaceholder: 'Например, Modivo Veo Challenge',
+    },
+    travel: {
+      subtitle: 'Модуль «Путешествия»: поездки и даты',
+      sectionTitle: 'Путешествия',
+      addLabel: '+ Новое путешествие',
+      filterLabel: 'Кто едет:',
+      emptyNote: 'Пока нет поездок. Нажми «+ Новое путешествие».',
+      formProjectLabel: 'Путешествие',
+      formProjectPlaceholder: 'Например, Италия на машине',
+    },
+  };
 
   function isDimmed(pr) {
     return filterPeople.size > 0 && !pr.peopleIds.some(id => filterPeople.has(id));
@@ -208,13 +241,15 @@
     return /фидбек|feedback/i.test(task.phase || '');
   }
 
-  // groups tasks by their parent project, ordered by each group's earliest start date
+  // groups the active sphere's tasks by their parent, ordered by earliest start
   function groupedProjects() {
     const groups = new Map();
-    state.projects.forEach(t => {
-      if (!groups.has(t.project)) groups.set(t.project, []);
-      groups.get(t.project).push(t);
-    });
+    state.projects
+      .filter(t => (t.sphere || 'work') === activeSphere)
+      .forEach(t => {
+        if (!groups.has(t.project)) groups.set(t.project, []);
+        groups.get(t.project).push(t);
+      });
     const list = [...groups.entries()].map(([project, tasks]) => ({
       project,
       tasks: [...tasks].sort((a, b) => a.start.localeCompare(b.start)),
@@ -222,6 +257,33 @@
     list.sort((a, b) => a.tasks[0].start.localeCompare(b.tasks[0].start));
     return list;
   }
+
+  // applies the active sphere's wording to the shared UI chrome
+  function applySphereChrome() {
+    const cfg = SPHERES[activeSphere] || SPHERES.work;
+    document.getElementById('heroSubtitle').textContent = cfg.subtitle;
+    document.getElementById('sectionTitle').textContent = cfg.sectionTitle;
+    document.getElementById('addProject').textContent = cfg.addLabel;
+    document.getElementById('filterLabel').textContent = cfg.filterLabel;
+    document.getElementById('ganttEmpty').textContent = cfg.emptyNote;
+    document.querySelectorAll('.sphere-tab[data-sphere]').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.sphere === activeSphere);
+    });
+  }
+
+  function setActiveSphere(sphere) {
+    if (!SPHERES[sphere] || sphere === activeSphere) return;
+    activeSphere = sphere;
+    localStorage.setItem('active-sphere', sphere);
+    filterPeople.clear();
+    closeProjectForm();
+    document.getElementById('peoplePanel').hidden = true;
+    renderAll();
+  }
+
+  document.querySelectorAll('.sphere-tab[data-sphere]').forEach(tab => {
+    tab.addEventListener('click', () => setActiveSphere(tab.dataset.sphere));
+  });
 
   // ---------- theme ----------
   const root = document.documentElement;
@@ -317,8 +379,14 @@
   function openProjectForm(task, presetProject) {
     editingProjectId = task ? task.id : null;
     pfSelectedPeople = new Set(task ? task.peopleIds : []);
-    document.getElementById('projectFormTitle').textContent = task ? 'Редактировать этап' : 'Новый проект / этап';
-    document.getElementById('pfProject').value = task ? task.project : (presetProject || '');
+    const cfg = SPHERES[activeSphere] || SPHERES.work;
+    document.getElementById('projectFormTitle').textContent = task
+      ? 'Редактировать'
+      : (activeSphere === 'travel' ? 'Новое путешествие' : 'Новый проект / этап');
+    const pfProjectEl = document.getElementById('pfProject');
+    pfProjectEl.closest('.field').querySelector('span').textContent = cfg.formProjectLabel;
+    pfProjectEl.placeholder = cfg.formProjectPlaceholder;
+    pfProjectEl.value = task ? task.project : (presetProject || '');
     document.getElementById('pfPhase').value = task ? (task.phase || '') : '';
     document.getElementById('pfStart').value = task ? task.start : todayISO();
     document.getElementById('pfEnd').value = task ? task.end : addDaysISO(todayISO(), 14);
@@ -373,7 +441,7 @@
       const pr = state.projects.find(x => x.id === editingProjectId);
       Object.assign(pr, { project, phase, start, end, status, notes, peopleIds: [...pfSelectedPeople] });
     } else {
-      state.projects.push({ id: uid(), project, phase, start, end, status, notes, peopleIds: [...pfSelectedPeople] });
+      state.projects.push({ id: uid(), sphere: activeSphere, project, phase, start, end, status, notes, peopleIds: [...pfSelectedPeople] });
     }
     save();
     closeProjectForm();
@@ -812,6 +880,7 @@
   window.addEventListener('resize', () => { renderProjects(); });
 
   function renderAll() {
+    applySphereChrome();
     renderPeopleChips();
     renderProjects();
   }
