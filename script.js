@@ -188,7 +188,7 @@
         '2026-08-11': { icon: '💻', title: 'Работа · вечер у моря', text: 'Днём работа. Вечером Римини или Риччоне — аперитив у моря, закат.' },
         '2026-08-12': { icon: '🏖', title: 'Равенна', text: 'Мозаики ЮНЕСКО: Сан-Витале, мавзолей Галлы Плацидии, Сант-Аполлинаре-Нуово (~1 ч езды). На обратном пути можно заехать в Чезену.' },
         '2026-08-13': { icon: '🏖', title: 'Флоренция', text: 'Выезд рано (~2,5–3 ч). Дуомо, Понте-Веккьо, вечером пьяццале Микеланджело. Парковка Villa Costanza → трамвай в центр. Уффици — только если забронировать заранее.' },
-        '2026-08-14': { icon: '🏖', title: 'Градара + Сан-Лео / море', text: 'День полегче перед переездом: замок Градара и крепость Сан-Лео — или пляжный день.' },
+        '2026-08-14': { icon: '🏖', title: 'Болонья', text: 'Порталы, башни Азинелли, Пьяцца Маджоре, обед в Квадрилатеро (~1 ч 15 от базы). Если хочется полегче перед переездом — вместо города замки Градара + Сан-Лео или море.' },
         '2026-08-15': { icon: '🚗', title: 'Феррагосто · переезд под Рим', text: '~4 ч до Rocca Priora (Via Monte Ceraso 24). Выехать пораньше: праздник, трафик к морю, многое закрыто. Продукты купить по пути.' },
         '2026-08-16': { icon: '🏖', title: 'Обжиться · озеро Альбано', text: 'Спокойное воскресенье: озеро Альбано, купание. Вечером Кастель-Гандольфо или Фраскати.' },
         '2026-08-17': { icon: '💻', title: 'Работа · вечер Фраскати', text: 'Днём работа (вариант — кафе во Фраскати). Вечером вино фраскати и виды на Рим.' },
@@ -931,6 +931,8 @@
       if (activeSphere === 'travel') {
         const planner = buildDayPlanner(project, tasks);
         if (planner) card.appendChild(planner);
+        const tripMap = buildTripMap(project);
+        if (tripMap) card.appendChild(tripMap);
       }
       container.appendChild(card);
     });
@@ -1009,6 +1011,155 @@
       if (sel) strip.scrollLeft = Math.max(0, sel.offsetLeft - strip.clientWidth / 2 + sel.offsetWidth / 2);
     });
 
+    return wrap;
+  }
+
+  // ---------- trip map (travel) ----------
+  // Two renderers behind one entry point: a real Leaflet/OSM map when the
+  // Leaflet CDN loaded (GitHub Pages build), otherwise a self-contained SVG
+  // schematic (the claude.ai artifact blocks all external hosts).
+  const MAP_POINT_COLORS = { base: '#2a78d6', day: '#0ca30c', evening: '#6c4fd6' };
+  const TRIP_MAPS = {
+    'Италия на машине': {
+      route: [
+        [46.99, 11.51], [46.07, 11.12], [45.44, 10.99], [44.49, 11.34], [44.031, 12.288],
+        [43.11, 12.39], [41.95, 12.60], [41.793, 12.760],
+      ],
+      points: [
+        { name: 'База 1 · Сан-Джованни-ин-Галилея (8–15.08)', lat: 44.031, lon: 12.288, kind: 'base', label: 'База 1', anchor: 'end', dx: -7, dy: -5 },
+        { name: 'База 2 · Рокка-Приора (15–23.08)', lat: 41.793, lon: 12.760, kind: 'base', label: 'База 2', dx: 8, dy: 12 },
+        { name: 'Сан-Марино', lat: 43.936, lon: 12.447, kind: 'day', day: '2026-08-09', label: 'Сан-Марино', anchor: 'end', dx: -7, dy: 10 },
+        { name: 'Римини', lat: 44.059, lon: 12.568, kind: 'day', day: '2026-08-09', label: 'Римини', dx: 7, dy: 1 },
+        { name: 'Равенна', lat: 44.418, lon: 12.201, kind: 'day', day: '2026-08-12', label: 'Равенна', dx: 7, dy: -3 },
+        { name: 'Флоренция', lat: 43.769, lon: 11.256, kind: 'day', day: '2026-08-13', label: 'Флоренция', anchor: 'end', dx: -7, dy: 3 },
+        { name: 'Болонья', lat: 44.494, lon: 11.343, kind: 'day', day: '2026-08-14', label: 'Болонья', anchor: 'end', dx: -7, dy: 3 },
+        { name: 'Сантарканджело (вечер пн)', lat: 44.063, lon: 12.446, kind: 'evening', day: '2026-08-10' },
+        { name: 'Градара (опция пт)', lat: 43.940, lon: 12.769, kind: 'evening', day: '2026-08-14' },
+        { name: 'Сан-Лео (опция пт)', lat: 43.896, lon: 12.343, kind: 'evening', day: '2026-08-14' },
+        { name: 'Рим', lat: 41.902, lon: 12.496, kind: 'day', day: '2026-08-22', label: 'Рим', anchor: 'end', dx: -7, dy: 3 },
+        { name: 'Тиволи', lat: 41.963, lon: 12.798, kind: 'day', day: '2026-08-22', label: 'Тиволи', dx: 7, dy: -2 },
+        { name: 'Фраскати (вечер)', lat: 41.808, lon: 12.681, kind: 'evening', day: '2026-08-17' },
+        { name: 'Неми (вечер)', lat: 41.720, lon: 12.716, kind: 'evening', day: '2026-08-18' },
+        { name: 'Аричча (вечер)', lat: 41.720, lon: 12.672, kind: 'evening', day: '2026-08-19' },
+        { name: 'Кастель-Гандольфо (вечер)', lat: 41.746, lon: 12.650, kind: 'evening', day: '2026-08-16' },
+      ],
+    },
+  };
+
+  // schematic projection constants — must match the generator that produced ITALY_PATH
+  const MAPP = { LON_MIN: 8.8, LAT_MAX: 47.2, K: Math.cos(44 * Math.PI / 180), S: 88, W: 380, H: 528 };
+  const ITALY_PATH = 'M425.4 789.3L402.6 858.5L412.1 885.8L398.8 931.0L350.4 897.9L318.2 888.4L229.8 843.7L238.7 798.5L312.8 806.5L377.4 796.9L425.4 789.3ZM26.0 527.1L63.9 589.6L55.0 706.0L26.3 700.4L0.4 729.8L-23.5 706.5L-26.1 600.3L-40.5 550.0L-5.7 554.4L26.0 527.1ZM226.4 38.1L316.9 60.8L310.1 104.1L325.2 141.6L274.8 128.8L223.4 160.0L226.9 203.7L219.1 228.8L239.9 273.6L299.2 317.9L331.1 390.6L401.5 461.5L451.1 461.0L466.5 480.5L448.8 498.0L505.5 529.8L551.9 556.4L606.2 602.3L612.8 618.7L600.9 650.3L565.8 609.2L510.8 594.7L484.2 651.6L529.9 684.2L522.4 730.1L496.0 735.4L462.2 810.8L435.8 817.6L436.0 790.7L448.9 743.5L462.7 724.7L438.0 673.7L418.7 629.3L392.4 618.4L373.7 580.4L333.0 564.4L305.6 529.0L258.8 523.3L209.3 483.6L151.4 426.3L108.4 375.6L88.6 288.6L57.1 278.4L5.6 249.4L-23.5 261.3L-60.1 302.1L-86.4 308.5L-79.2 270.3L-113.5 259.2L-129.8 191.1L-107.8 164.3L-126.5 131.2L-123.8 106.4L-96.6 125.2L-66.1 121.0L-30.6 91.2L-19.6 105.1L10.5 102.3L24.2 66.9L71.1 77.9L99.0 63.0L104.0 27.0L142.3 39.5L149.7 22.7L212.3 7.4L226.4 38.1Z';
+
+  function selectMapDay(projectName, day) {
+    if (!day) return;
+    selectedDayByTrip[projectName] = day;
+    renderProjects();
+  }
+
+  function mapDayHint(day) {
+    return day ? ` · ${fmtDate(day)}` : '';
+  }
+
+  function buildTripMap(projectName) {
+    const data = TRIP_MAPS[projectName];
+    if (!data) return null;
+    const wrap = document.createElement('div');
+    wrap.className = 'trip-map';
+
+    if (window.L && typeof window.L.map === 'function') {
+      // real interactive map (OpenStreetMap tiles) — works outside the artifact sandbox
+      const mapEl = document.createElement('div');
+      mapEl.className = 'trip-map-leaflet';
+      wrap.appendChild(mapEl);
+      requestAnimationFrame(() => {
+        const map = L.map(mapEl, { scrollWheelZoom: false });
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 18,
+          attribution: '&copy; OpenStreetMap contributors',
+        }).addTo(map);
+        L.polyline(data.route, { color: '#c98500', weight: 3, dashArray: '6 6', opacity: 0.8 }).addTo(map);
+        data.points.forEach(p => {
+          const m = L.circleMarker([p.lat, p.lon], {
+            radius: p.kind === 'base' ? 9 : 7,
+            color: '#ffffff', weight: 2,
+            fillColor: MAP_POINT_COLORS[p.kind], fillOpacity: 0.95,
+          }).addTo(map);
+          m.bindTooltip(`${p.name}${mapDayHint(p.day)}`);
+          m.on('click', () => selectMapDay(projectName, p.day));
+        });
+        map.fitBounds(data.points.map(p => [p.lat, p.lon]), { padding: [28, 28] });
+      });
+    } else {
+      // self-contained schematic fallback for the sandboxed artifact
+      const px = (lon) => (lon - MAPP.LON_MIN) * MAPP.K * MAPP.S;
+      const py = (lat) => (MAPP.LAT_MAX - lat) * MAPP.S;
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('viewBox', `0 0 ${MAPP.W} ${MAPP.H}`);
+      svg.setAttribute('role', 'img');
+      svg.setAttribute('aria-label', 'Схема маршрута по Италии');
+
+      const sea = document.createElementNS(svgNS, 'rect');
+      sea.setAttribute('width', MAPP.W); sea.setAttribute('height', MAPP.H);
+      sea.setAttribute('fill', 'var(--brand-wash)'); sea.setAttribute('rx', 16);
+      svg.appendChild(sea);
+
+      const land = document.createElementNS(svgNS, 'path');
+      land.setAttribute('d', ITALY_PATH);
+      land.setAttribute('fill', 'var(--surface-1)');
+      land.setAttribute('stroke', 'var(--baseline)');
+      land.setAttribute('stroke-width', '1');
+      svg.appendChild(land);
+
+      const route = document.createElementNS(svgNS, 'polyline');
+      route.setAttribute('points', data.route.map(([la, lo]) => `${px(lo).toFixed(1)},${py(la).toFixed(1)}`).join(' '));
+      route.setAttribute('fill', 'none');
+      route.setAttribute('stroke', 'var(--warning)');
+      route.setAttribute('stroke-width', '2');
+      route.setAttribute('stroke-dasharray', '5 5');
+      route.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(route);
+
+      data.points.forEach(p => {
+        const x = px(p.lon), y = py(p.lat);
+        const dot = document.createElementNS(svgNS, 'circle');
+        dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+        dot.setAttribute('r', p.kind === 'base' ? 6 : 4.5);
+        dot.setAttribute('fill', MAP_POINT_COLORS[p.kind]);
+        dot.setAttribute('stroke', 'var(--surface-1)');
+        dot.setAttribute('stroke-width', '1.5');
+        dot.classList.add('map-dot');
+        const tip = (evt) => showTooltip(evt, `<div><b>${escapeHtml(p.name)}</b>${mapDayHint(p.day)}</div>`);
+        dot.addEventListener('pointerenter', tip);
+        dot.addEventListener('pointermove', tip);
+        dot.addEventListener('pointerleave', hideTooltip);
+        dot.addEventListener('click', () => { hideTooltip(); selectMapDay(projectName, p.day); });
+        svg.appendChild(dot);
+        if (p.label) {
+          const t = document.createElementNS(svgNS, 'text');
+          t.setAttribute('x', x + (p.dx || 7));
+          t.setAttribute('y', y + (p.dy || 3));
+          if (p.anchor) t.setAttribute('text-anchor', p.anchor);
+          t.setAttribute('font-size', '11');
+          t.setAttribute('font-weight', '600');
+          t.setAttribute('fill', 'var(--text-secondary)');
+          t.textContent = p.label;
+          svg.appendChild(t);
+        }
+      });
+      wrap.appendChild(svg);
+    }
+
+    const legend = document.createElement('div');
+    legend.className = 'map-legend';
+    legend.innerHTML = `
+      <span><i style="background:${MAP_POINT_COLORS.base}"></i> базы</span>
+      <span><i style="background:${MAP_POINT_COLORS.day}"></i> дни-поездки</span>
+      <span><i style="background:${MAP_POINT_COLORS.evening}"></i> вечера и опции</span>
+      <span><i class="map-legend-route"></i> маршрут</span>
+      <span class="map-legend-note">клик по точке открывает день</span>
+    `;
+    wrap.appendChild(legend);
     return wrap;
   }
 

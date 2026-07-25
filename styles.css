@@ -466,6 +466,46 @@ body {
   min-height: 64px;
 }
 
+/* ---------- trip map (travel) ---------- */
+.trip-map { margin-top: 16px; }
+.trip-map svg {
+  display: block;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  border-radius: 16px;
+}
+.trip-map .map-dot { cursor: pointer; }
+.trip-map .map-dot:hover { stroke-width: 3; }
+.trip-map-leaflet {
+  height: 430px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.map-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.map-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.map-legend i {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+.map-legend .map-legend-route {
+  width: 18px; height: 0;
+  border-top: 2px dashed var(--warning);
+  border-radius: 0;
+}
+.map-legend-note { color: var(--text-muted); }
+
 /* ---------- footer ---------- */
 .footer {
   display: flex;
