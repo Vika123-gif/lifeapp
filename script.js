@@ -1002,6 +1002,25 @@
     });
     detail.appendChild(title);
     detail.appendChild(text);
+    // Google Maps links for this day's places (from the trip map data)
+    const tripData = TRIP_MAPS[projectName];
+    if (tripData) {
+      const pts = tripData.points.filter(p => p.day === selected);
+      if (pts.length) {
+        const links = document.createElement('div');
+        links.className = 'day-links';
+        pts.forEach(p => {
+          const a = document.createElement('a');
+          a.className = 'day-link';
+          a.href = gmapsPointUrl(p);
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.textContent = `📍 ${p.name.replace(/\s*\(.*\)$/, '')}`;
+          links.appendChild(a);
+        });
+        detail.appendChild(links);
+      }
+    }
     wrap.appendChild(detail);
 
     // center the selected chip in the strip once mounted (horizontal only,
@@ -1019,8 +1038,14 @@
   // Leaflet CDN loaded (GitHub Pages build), otherwise a self-contained SVG
   // schematic (the claude.ai artifact blocks all external hosts).
   const MAP_POINT_COLORS = { base: '#2a78d6', day: '#0ca30c', evening: '#6c4fd6' };
+  function gmapsPointUrl(p) {
+    return `https://www.google.com/maps/search/?api=1&query=${p.lat}%2C${p.lon}`;
+  }
   const TRIP_MAPS = {
     'Италия на машине': {
+      gmapsRoute: 'https://www.google.com/maps/dir/?api=1'
+        + '&origin=' + encodeURIComponent('Via Giacomo Matteotti 27, San Giovanni in Galilea, Italy')
+        + '&destination=' + encodeURIComponent('Via Monte Ceraso 24, Rocca Priora, Italy'),
       route: [
         [46.99, 11.51], [46.07, 11.12], [45.44, 10.99], [44.49, 11.34], [44.031, 12.288],
         [43.11, 12.39], [41.95, 12.60], [41.793, 12.760],
@@ -1067,25 +1092,35 @@
     wrap.className = 'trip-map';
 
     if (window.L && typeof window.L.map === 'function') {
-      // real interactive map (OpenStreetMap tiles) — works outside the artifact sandbox
+      // real interactive map — satellite imagery with a labels overlay, plus a
+      // street-map layer to switch to; works outside the artifact sandbox
       const mapEl = document.createElement('div');
       mapEl.className = 'trip-map-leaflet';
       wrap.appendChild(mapEl);
       requestAnimationFrame(() => {
-        const map = L.map(mapEl, { scrollWheelZoom: false });
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 18,
-          attribution: '&copy; OpenStreetMap contributors',
-        }).addTo(map);
-        L.polyline(data.route, { color: '#c98500', weight: 3, dashArray: '6 6', opacity: 0.8 }).addTo(map);
+        const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          maxZoom: 18, attribution: 'Imagery &copy; Esri',
+        });
+        const labels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+          maxZoom: 18, attribution: '&copy; CARTO &copy; OpenStreetMap',
+        });
+        const satGroup = L.layerGroup([sat, labels]);
+        const streets = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 18, attribution: '&copy; OpenStreetMap contributors',
+        });
+        const map = L.map(mapEl, { scrollWheelZoom: false, layers: [satGroup] });
+        L.control.layers({ 'Спутник': satGroup, 'Схема': streets }).addTo(map);
+        L.polyline(data.route, { color: '#ffb020', weight: 3, dashArray: '6 6', opacity: 0.9 }).addTo(map);
         data.points.forEach(p => {
           const m = L.circleMarker([p.lat, p.lon], {
             radius: p.kind === 'base' ? 9 : 7,
             color: '#ffffff', weight: 2,
             fillColor: MAP_POINT_COLORS[p.kind], fillOpacity: 0.95,
           }).addTo(map);
-          m.bindTooltip(`${p.name}${mapDayHint(p.day)}`);
-          m.on('click', () => selectMapDay(projectName, p.day));
+          m.bindPopup(
+            `<b>${escapeHtml(p.name)}</b>${mapDayHint(p.day)}<br>`
+            + `<a href="${gmapsPointUrl(p)}" target="_blank" rel="noopener">Открыть в Google Maps →</a>`
+          );
         });
         map.fitBounds(data.points.map(p => [p.lat, p.lon]), { padding: [28, 28] });
       });
@@ -1157,10 +1192,79 @@
       <span><i style="background:${MAP_POINT_COLORS.day}"></i> дни-поездки</span>
       <span><i style="background:${MAP_POINT_COLORS.evening}"></i> вечера и опции</span>
       <span><i class="map-legend-route"></i> маршрут</span>
-      <span class="map-legend-note">клик по точке открывает день</span>
     `;
     wrap.appendChild(legend);
+
+    const actions = document.createElement('div');
+    actions.className = 'map-actions';
+    if (data.gmapsRoute) {
+      const a = document.createElement('a');
+      a.className = 'btn btn-ghost btn-small';
+      a.href = data.gmapsRoute;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = '🗺 Маршрут в Google Maps';
+      actions.appendChild(a);
+    }
+    // KML export for Google My Maps (import at mymaps.google.com); file
+    // downloads are blocked inside the artifact sandbox, so only offer it
+    // where the page runs unsandboxed (same signal as Leaflet loading)
+    if (window.L) {
+      const k = document.createElement('button');
+      k.type = 'button';
+      k.className = 'btn btn-ghost btn-small';
+      k.textContent = '⬇️ Точки для Google My Maps (KML)';
+      k.addEventListener('click', () => {
+        const blob = new Blob([buildTripKml(projectName)], { type: 'application/vnd.google-earth.kml+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'italia-na-mashine.kml';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        toast('Файл скачан. Импортируй его на mymaps.google.com — точки появятся в твоём Google Maps.');
+      });
+      actions.appendChild(k);
+    }
+    if (actions.children.length) wrap.appendChild(actions);
     return wrap;
+  }
+
+  // KML with every map point (+ the drive route), importable into Google My Maps
+  function buildTripKml(projectName) {
+    const data = TRIP_MAPS[projectName];
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const KIND_KML = {
+      base: { style: 'base', label: 'База' },
+      day: { style: 'day', label: 'День-поездка' },
+      evening: { style: 'evening', label: 'Вечер / опция' },
+    };
+    const placemarks = data.points.map(p => `
+    <Placemark>
+      <name>${esc(p.name)}</name>
+      <description>${esc((p.day ? fmtDate(p.day) + ' · ' : '') + KIND_KML[p.kind].label + ' · ' + projectName)}</description>
+      <styleUrl>#${KIND_KML[p.kind].style}</styleUrl>
+      <Point><coordinates>${p.lon},${p.lat},0</coordinates></Point>
+    </Placemark>`).join('');
+    const routeCoords = data.route.map(([la, lo]) => `${lo},${la},0`).join(' ');
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>${esc(projectName)}</name>
+    <Style id="base"><IconStyle><color>ffd6782a</color><scale>1.2</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/blu-circle.png</href></Icon></IconStyle></Style>
+    <Style id="day"><IconStyle><color>ff0ca30c</color><Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href></Icon></IconStyle></Style>
+    <Style id="evening"><IconStyle><color>ffd64f6c</color><Icon><href>http://maps.google.com/mapfiles/kml/paddle/purple-circle.png</href></Icon></IconStyle></Style>
+    <Style id="routeline"><LineStyle><color>cc00b0ff</color><width>3</width></LineStyle></Style>
+    ${placemarks}
+    <Placemark>
+      <name>Маршрут на машине</name>
+      <styleUrl>#routeline</styleUrl>
+      <LineString><tessellate>1</tessellate><coordinates>${routeCoords}</coordinates></LineString>
+    </Placemark>
+  </Document>
+</kml>`;
   }
 
   function escapeHtml(str) {
