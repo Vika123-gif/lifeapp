@@ -147,6 +147,9 @@
     projects.forEach(p => { p.sphere = 'work'; });
 
     // ---- Путешествия: Италия на машине (7–23 августа) ----
+    // The trip's Gantt keeps only logistics (drives + accommodation); the
+    // day-by-day sightseeing plan lives in dayPlans and renders as a clickable
+    // day strip under the chart.
     const trip = 'Италия на машине';
     projects.push(
       {
@@ -157,12 +160,7 @@
       {
         id: uid(), sphere: 'travel', project: trip, phase: '🏠 База 1 — Сан-Джованни-ин-Галилея', status: 'stay',
         start: '2026-08-08', end: '2026-08-15', peopleIds: [P.me],
-        notes: 'Via Giacomo Matteotti, 27, San Giovanni in Galilea, Emilia-Romagna 47030. Романья, рядом Римини и Сан-Марино. Пн–Вт (10–11.08) — работа, вечера свободны.',
-      },
-      {
-        id: uid(), sphere: 'travel', project: trip, phase: '🏖 Отпуск — города Романьи', status: 'off',
-        start: '2026-08-12', end: '2026-08-14', peopleIds: [P.me],
-        notes: 'Выходные дни (ср–пт). План: Сан-Марино, Равенна (мозаики ЮНЕСКО), Римини, Градара, Сан-Лео.',
+        notes: 'Via Giacomo Matteotti, 27, San Giovanni in Galilea, Emilia-Romagna 47030. Романья, рядом Римини и Сан-Марино.',
       },
       {
         id: uid(), sphere: 'travel', project: trip, phase: '🚗 Переезд под Рим', status: 'drive',
@@ -174,25 +172,45 @@
         start: '2026-08-15', end: '2026-08-23', peopleIds: [P.me],
         notes: 'Via Monte Ceraso, 24, Rocca Priora, 00079, Italy. Кастелли-Романи, ~40 мин до Рима.',
       },
-      {
-        id: uid(), sphere: 'travel', project: trip, phase: '💻 Работа, вечера свободные', status: 'workday',
-        start: '2026-08-17', end: '2026-08-21', peopleIds: [P.me],
-        notes: 'Будни. Вечера свободны / можно работать из кафе. Вечера: Фраскати (вино), Неми (озеро), Кастель-Гандольфо.',
-      },
-      {
-        id: uid(), sphere: 'travel', project: trip, phase: '🏖 Выходные — Рим / Тиволи', status: 'off',
-        start: '2026-08-22', end: '2026-08-23', peopleIds: [P.me],
-        notes: 'Большой выезд: Рим (истор. центр) или Тиволи — Вилла д’Эсте + Вилла Адриана.',
-      },
     );
 
-    return { people, projects };
+    return { people, projects, dayPlans: seedDayPlans() };
+  }
+
+  // day-by-day itinerary, keyed by trip name → ISO date
+  function seedDayPlans() {
+    return {
+      'Италия на машине': {
+        '2026-08-07': { icon: '🚗', title: 'Дорога в Италию', text: 'Выезд. Ночь пт→сб пока без брони — найти ночёвку по пути (Австрия / север Италии).' },
+        '2026-08-08': { icon: '🏠', title: 'Дорога → заселение', text: 'В дороге до вечера. Заселение: Via Giacomo Matteotti 27, San Giovanni in Galilea. Купить продукты на вечер.' },
+        '2026-08-09': { icon: '🏖', title: 'Сан-Марино + Римини', text: 'Первый выходной, всё рядом с базой. Утро — Сан-Марино (крепости Гуаита и Честа, панорамы). Вечер — старый Римини (мост Тиберия, пьяцца Кавур) или набережная.' },
+        '2026-08-10': { icon: '💻', title: 'Работа · вечер Сантарканджело', text: 'Днём работа. Вечером Сантарканджело-ди-Романья — уютный старый город, ужин в остерии (~15 мин от базы).' },
+        '2026-08-11': { icon: '💻', title: 'Работа · вечер у моря', text: 'Днём работа. Вечером Римини или Риччоне — аперитив у моря, закат.' },
+        '2026-08-12': { icon: '🏖', title: 'Равенна', text: 'Мозаики ЮНЕСКО: Сан-Витале, мавзолей Галлы Плацидии, Сант-Аполлинаре-Нуово (~1 ч езды). На обратном пути можно заехать в Чезену.' },
+        '2026-08-13': { icon: '🏖', title: 'Флоренция', text: 'Выезд рано (~2,5–3 ч). Дуомо, Понте-Веккьо, вечером пьяццале Микеланджело. Парковка Villa Costanza → трамвай в центр. Уффици — только если забронировать заранее.' },
+        '2026-08-14': { icon: '🏖', title: 'Градара + Сан-Лео / море', text: 'День полегче перед переездом: замок Градара и крепость Сан-Лео — или пляжный день.' },
+        '2026-08-15': { icon: '🚗', title: 'Феррагосто · переезд под Рим', text: '~4 ч до Rocca Priora (Via Monte Ceraso 24). Выехать пораньше: праздник, трафик к морю, многое закрыто. Продукты купить по пути.' },
+        '2026-08-16': { icon: '🏖', title: 'Обжиться · озеро Альбано', text: 'Спокойное воскресенье: озеро Альбано, купание. Вечером Кастель-Гандольфо или Фраскати.' },
+        '2026-08-17': { icon: '💻', title: 'Работа · вечер Фраскати', text: 'Днём работа (вариант — кафе во Фраскати). Вечером вино фраскати и виды на Рим.' },
+        '2026-08-18': { icon: '💻', title: 'Работа · вечер Неми', text: 'Вечером озеро Неми — городок на обрыве, клубничные десерты.' },
+        '2026-08-19': { icon: '💻', title: 'Работа · вечер Аричча', text: 'Вечером Аричча — fraschette и porchetta.' },
+        '2026-08-20': { icon: '💻', title: 'Работа · вечер у озера', text: 'Вечером купание в озере Альбано / прогулка в Кастель-Гандольфо.' },
+        '2026-08-21': { icon: '💻', title: 'Работа · свободный вечер', text: 'Запасной вечер: Рокка-ди-Папа, закат на Monte Cavo — или просто ужин.' },
+        '2026-08-22': { icon: '🏖', title: 'Рим или Тиволи', text: 'Полный день. Рим: ранний выезд, Пантеон, Навона, Треви, вечером Трастевере. Или Тиволи: Вилла д’Эсте + Вилла Адриана.' },
+        '2026-08-23': { icon: '🏖', title: 'Последний день', text: 'Второй из пары Рим/Тиволи — что не успели, или утро у озера. Вечером сборы; уточнить, когда выезжаем домой.' },
+      },
+    };
   }
 
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const s = JSON.parse(raw);
+        // older saves predate day plans — backfill so the day strip isn't empty
+        if (!s.dayPlans) s.dayPlans = seedDayPlans();
+        return s;
+      }
     } catch (e) { /* ignore corrupt storage */ }
     return seedData();
   }
@@ -230,7 +248,7 @@
   }
 
   function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ people: state.people, projects: state.projects }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ people: state.people, projects: state.projects, dayPlans: state.dayPlans || {} }));
   }
 
   function personName(id) {
@@ -910,8 +928,88 @@
 
       card.appendChild(head);
       card.appendChild(buildGanttChart(tasks));
+      if (activeSphere === 'travel') {
+        const planner = buildDayPlanner(project, tasks);
+        if (planner) card.appendChild(planner);
+      }
       container.appendChild(card);
     });
+  }
+
+  // ---------- day-by-day planner (travel) ----------
+  // A strip of clickable day chips under the trip's Gantt; the selected day's
+  // plan (what we visit) shows beneath and is editable in place.
+  const selectedDayByTrip = {};
+  function buildDayPlanner(projectName, tasks) {
+    const minStart = tasks.reduce((m, p) => p.start < m ? p.start : m, tasks[0].start);
+    const maxEnd = tasks.reduce((m, p) => p.end > m ? p.end : m, tasks[0].end);
+    if (!state.dayPlans) state.dayPlans = {};
+    if (!state.dayPlans[projectName]) state.dayPlans[projectName] = {};
+    const plans = state.dayPlans[projectName];
+
+    const t = todayISO();
+    let selected = selectedDayByTrip[projectName];
+    if (!selected || selected < minStart || selected > maxEnd) {
+      selected = (t >= minStart && t <= maxEnd) ? t : minStart;
+      selectedDayByTrip[projectName] = selected;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'day-planner';
+
+    const strip = document.createElement('div');
+    strip.className = 'day-strip';
+    for (let iso = minStart; iso <= maxEnd; iso = addDaysISO(iso, 1)) {
+      const d = isoToUTCDate(iso);
+      const dow = d.getUTCDay();
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'day-chip'
+        + (iso === selected ? ' selected' : '')
+        + ((dow === 0 || dow === 6) ? ' weekend' : '');
+      const dowStr = d.toLocaleDateString('ru-RU', { weekday: 'short', timeZone: 'UTC' });
+      chip.innerHTML = `
+        <span class="d-dow">${escapeHtml(dowStr)}</span>
+        <span class="d-num">${d.getUTCDate()}</span>
+        <span class="d-ico">${plans[iso] ? plans[iso].icon : '·'}</span>
+      `;
+      chip.addEventListener('click', () => {
+        selectedDayByTrip[projectName] = iso;
+        renderProjects();
+      });
+      strip.appendChild(chip);
+    }
+    wrap.appendChild(strip);
+
+    const plan = plans[selected] || {};
+    const detail = document.createElement('div');
+    detail.className = 'day-detail';
+    const title = document.createElement('div');
+    title.className = 'day-detail-title';
+    const dateStr = isoToUTCDate(selected).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+    title.textContent = `${plan.icon ? plan.icon + ' ' : ''}${dateStr}${plan.title ? ' — ' + plan.title : ''}`;
+    const text = document.createElement('textarea');
+    text.className = 'day-detail-text';
+    text.rows = 3;
+    text.placeholder = 'Что делаем в этот день? Пиши прямо сюда — сохранится само.';
+    text.value = plan.text || '';
+    text.addEventListener('change', () => {
+      if (!plans[selected]) plans[selected] = { icon: '📍', title: '', text: '' };
+      plans[selected].text = text.value.trim();
+      save();
+    });
+    detail.appendChild(title);
+    detail.appendChild(text);
+    wrap.appendChild(detail);
+
+    // center the selected chip in the strip once mounted (horizontal only,
+    // so the page itself never jumps)
+    requestAnimationFrame(() => {
+      const sel = strip.querySelector('.day-chip.selected');
+      if (sel) strip.scrollLeft = Math.max(0, sel.offsetLeft - strip.clientWidth / 2 + sel.offsetWidth / 2);
+    });
+
+    return wrap;
   }
 
   function escapeHtml(str) {
