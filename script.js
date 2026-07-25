@@ -8,10 +8,21 @@
   const LABELS_W = 150;
 
   const STATUS = {
+    // Работа
     planned: { label: 'Запланирован', icon: '○', varName: '--planned-ink' },
     active:  { label: 'В работе',     icon: '▶', varName: '--series-1' },
     paused:  { label: 'На паузе',     icon: '⏸', varName: '--warning' },
     done:    { label: 'Завершён',     icon: '✓', varName: '--good' },
+    // Путешествия
+    stay:    { label: 'Проживание',      icon: '🏠', varName: '--series-1' },
+    drive:   { label: 'В дороге',        icon: '🚗', varName: '--warning' },
+    off:     { label: 'Отдых / города',  icon: '🏖', varName: '--good' },
+    workday: { label: 'Рабочие дни',     icon: '💻', varName: '--planned-ink' },
+  };
+  // which statuses the form offers per sphere (first is the default for new items)
+  const SPHERE_STATUSES = {
+    work:   ['planned', 'active', 'paused', 'done'],
+    travel: ['stay', 'drive', 'off', 'workday'],
   };
 
   function uid() { return Math.random().toString(36).slice(2, 10); }
@@ -135,12 +146,45 @@
     // everything above belongs to the Работа sphere
     projects.forEach(p => { p.sphere = 'work'; });
 
-    // ---- Путешествия ----
-    projects.push({
-      id: uid(), sphere: 'travel', project: 'Италия на машине', phase: '', status: 'planned',
-      start: '2026-08-07', end: '2026-08-23', peopleIds: [P.me],
-      notes: 'Поездка на машине.',
-    });
+    // ---- Путешествия: Италия на машине (7–23 августа) ----
+    const trip = 'Италия на машине';
+    projects.push(
+      {
+        id: uid(), sphere: 'travel', project: trip, phase: '🚗 Дорога в Италию', status: 'drive',
+        start: '2026-08-07', end: '2026-08-08', peopleIds: [P.me],
+        notes: 'Выезд в пятницу, в дороге до вечера субботы. Ночь пт→сб без брони.',
+      },
+      {
+        id: uid(), sphere: 'travel', project: trip, phase: '🏠 База 1 — Сан-Джованни-ин-Галилея', status: 'stay',
+        start: '2026-08-08', end: '2026-08-15', peopleIds: [P.me],
+        notes: 'Via Giacomo Matteotti, 27, San Giovanni in Galilea, Emilia-Romagna 47030. Романья, рядом Римини и Сан-Марино. Пн–Вт (10–11.08) — работа, вечера свободны.',
+      },
+      {
+        id: uid(), sphere: 'travel', project: trip, phase: '🏖 Отпуск — города Романьи', status: 'off',
+        start: '2026-08-12', end: '2026-08-14', peopleIds: [P.me],
+        notes: 'Выходные дни (ср–пт). План: Сан-Марино, Равенна (мозаики ЮНЕСКО), Римини, Градара, Сан-Лео.',
+      },
+      {
+        id: uid(), sphere: 'travel', project: trip, phase: '🚗 Переезд под Рим', status: 'drive',
+        start: '2026-08-15', end: '2026-08-15', peopleIds: [P.me],
+        notes: '~4 ч: Романья → Кастелли-Романи. 15.08 — Феррагосто: многое закрыто, трафик к морю. Выезжать пораньше.',
+      },
+      {
+        id: uid(), sphere: 'travel', project: trip, phase: '🏠 База 2 — Рокка-Приора (под Римом)', status: 'stay',
+        start: '2026-08-15', end: '2026-08-23', peopleIds: [P.me],
+        notes: 'Via Monte Ceraso, 24, Rocca Priora, 00079, Italy. Кастелли-Романи, ~40 мин до Рима.',
+      },
+      {
+        id: uid(), sphere: 'travel', project: trip, phase: '💻 Работа, вечера свободные', status: 'workday',
+        start: '2026-08-17', end: '2026-08-21', peopleIds: [P.me],
+        notes: 'Будни. Вечера свободны / можно работать из кафе. Вечера: Фраскати (вино), Неми (озеро), Кастель-Гандольфо.',
+      },
+      {
+        id: uid(), sphere: 'travel', project: trip, phase: '🏖 Выходные — Рим / Тиволи', status: 'off',
+        start: '2026-08-22', end: '2026-08-23', peopleIds: [P.me],
+        notes: 'Большой выезд: Рим (истор. центр) или Тиволи — Вилла д’Эсте + Вилла Адриана.',
+      },
+    );
 
     return { people, projects };
   }
@@ -390,7 +434,17 @@
     document.getElementById('pfPhase').value = task ? (task.phase || '') : '';
     document.getElementById('pfStart').value = task ? task.start : todayISO();
     document.getElementById('pfEnd').value = task ? task.end : addDaysISO(todayISO(), 14);
-    document.getElementById('pfStatus').value = task ? task.status : 'planned';
+    // status options depend on the sphere (work vs travel)
+    const statusKeys = SPHERE_STATUSES[activeSphere] || SPHERE_STATUSES.work;
+    const statusSel = document.getElementById('pfStatus');
+    statusSel.innerHTML = '';
+    statusKeys.forEach(k => {
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = `${STATUS[k].icon} ${STATUS[k].label}`;
+      statusSel.appendChild(opt);
+    });
+    statusSel.value = task ? task.status : statusKeys[0];
     document.getElementById('pfNotes').value = task ? (task.notes || '') : '';
     document.getElementById('deleteProjectBtn').hidden = !task;
     renderPfPeople();
