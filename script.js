@@ -41,40 +41,95 @@
   }
 
   function seedData() {
+    // stable person ids so phases can reference them
+    const P = { me: 'p1', pavel: 'p2', olya: 'p3', natasha: 'p4', artur: 'p5', voitek: 'p6', designer: 'p7' };
     const people = [
-      { id: 'p1', name: 'Я' },
-      { id: uid(), name: 'Павер' },
-      { id: uid(), name: 'Оля' },
-      { id: uid(), name: 'Наталья' },
-      { id: uid(), name: 'Артур' },
-      { id: uid(), name: 'Войтек' },
-      { id: uid(), name: 'Дизайнер' },
+      { id: P.me, name: 'Я' },
+      { id: P.pavel, name: 'Павел' },
+      { id: P.olya, name: 'Оля' },
+      { id: P.natasha, name: 'Наталья' },
+      { id: P.artur, name: 'Артур' },
+      { id: P.voitek, name: 'Войтек' },
+      { id: P.designer, name: 'Дизайнер' },
     ];
     const projects = [
+      // ---- Modivo Veo Challenge (дедлайн 28.08) ----
       {
-        id: uid(), project: 'Modivo Veo Challenge', phase: 'Сценарий', status: 'active',
-        start: '2026-07-20', end: '2026-07-26', peopleIds: ['p1'],
+        id: uid(), project: 'Modivo Veo Challenge', phase: 'Сценарий', status: 'done',
+        start: '2026-07-20', end: '2026-07-25', peopleIds: [P.me],
         notes: 'Дедлайн проекта: 28.08. Нужно 2 видео по 30 сек — форматы 9:16 и 16:9.',
       },
       {
+        id: uid(), project: 'Modivo Veo Challenge', phase: 'Фидбек клиента (сценарий)', status: 'done',
+        start: '2026-07-26', end: '2026-07-27', peopleIds: [P.olya],
+        notes: 'Закрыто.',
+      },
+      {
         id: uid(), project: 'Modivo Veo Challenge', phase: 'Сторибоды', status: 'planned',
-        start: '2026-07-27', end: '2026-08-02', peopleIds: ['p1'],
-        notes: 'Сторибоды по утверждённому сценарию.',
+        start: '2026-07-28', end: '2026-08-02', peopleIds: [P.pavel],
+        notes: '',
       },
       {
-        id: uid(), project: 'Modivo Veo Challenge', phase: 'Клиентский фидбек', status: 'planned',
-        start: '2026-08-03', end: '2026-08-05', peopleIds: ['p1'],
-        notes: 'Ждём фидбек клиента по сторибордам перед стартом съёмки/монтажа.',
+        id: uid(), project: 'Modivo Veo Challenge', phase: 'Фидбек клиента (сторибоды)', status: 'planned',
+        start: '2026-08-03', end: '2026-08-04', peopleIds: [],
+        notes: '',
       },
       {
-        id: uid(), project: 'Modivo Veo Challenge', phase: 'Создание видео', status: 'planned',
-        start: '2026-08-06', end: '2026-08-28', peopleIds: ['p1'],
-        notes: '2 видео по 30 сек (9:16 и 16:9), финальный рендер и сдача до 28.08.',
+        id: uid(), project: 'Modivo Veo Challenge', phase: 'Создание видео — формат 9:16', status: 'planned',
+        start: '2026-08-05', end: '2026-08-11', peopleIds: [P.pavel],
+        notes: 'Делаем первый формат, отправляем на фидбек, затем второй.',
       },
       {
-        id: uid(), project: 'Cropp', phase: '', status: 'planned',
-        start: '2026-07-24', end: '2026-08-31', peopleIds: ['p1'],
-        notes: 'Скоуп пока не определён.',
+        id: uid(), project: 'Modivo Veo Challenge', phase: 'Фидбек клиента (9:16)', status: 'planned',
+        start: '2026-08-12', end: '2026-08-13', peopleIds: [],
+        notes: '',
+      },
+      {
+        id: uid(), project: 'Modivo Veo Challenge', phase: 'Создание видео — формат 16:9', status: 'planned',
+        start: '2026-08-14', end: '2026-08-20', peopleIds: [P.pavel],
+        notes: '',
+      },
+      {
+        id: uid(), project: 'Modivo Veo Challenge', phase: 'Монтаж', status: 'planned',
+        start: '2026-08-21', end: '2026-08-27', peopleIds: [P.artur],
+        notes: '',
+      },
+
+      // ---- Cropp (дедлайн 31.08) ----
+      {
+        id: uid(), project: 'Cropp', phase: 'Утверждение скоупа', status: 'active',
+        start: '2026-07-24', end: '2026-07-28', peopleIds: [P.me, P.natasha],
+        notes: 'Дедлайн проекта: 31.08.',
+      },
+      {
+        id: uid(), project: 'Cropp', phase: 'Утверждение сценариев', status: 'planned',
+        start: '2026-07-29', end: '2026-08-02', peopleIds: [P.natasha],
+        notes: '',
+      },
+      {
+        id: uid(), project: 'Cropp', phase: 'Сторибоды', status: 'planned',
+        start: '2026-08-03', end: '2026-08-07', peopleIds: [P.pavel],
+        notes: '',
+      },
+      {
+        id: uid(), project: 'Cropp', phase: 'Создание видео', status: 'planned',
+        start: '2026-08-08', end: '2026-08-15', peopleIds: [P.pavel],
+        notes: 'Порядок: сначала видео, потом Hook, потом реформаты.',
+      },
+      {
+        id: uid(), project: 'Cropp', phase: 'Hook', status: 'planned',
+        start: '2026-08-16', end: '2026-08-19', peopleIds: [],
+        notes: '',
+      },
+      {
+        id: uid(), project: 'Cropp', phase: 'Реформаты', status: 'planned',
+        start: '2026-08-20', end: '2026-08-25', peopleIds: [P.pavel],
+        notes: '',
+      },
+      {
+        id: uid(), project: 'Cropp', phase: 'Монтаж', status: 'planned',
+        start: '2026-08-26', end: '2026-08-30', peopleIds: [P.artur],
+        notes: '',
       },
     ];
     return { people, projects };
@@ -387,10 +442,30 @@
     svg.setAttribute('role', 'img');
     svg.setAttribute('aria-label', 'Диаграмма Ганта по этапам проекта');
 
+    const maxEndDate = isoToUTCDate(maxEnd);
+
+    // weekend shading (Sat + Sun) — a light band behind everything so the
+    // reader can see where the weekends fall between the week gridlines.
+    const dayCursor = isoToUTCDate(minStart);
+    while (dayCursor <= maxEndDate) {
+      const dow = dayCursor.getUTCDay(); // 0 = Sun, 6 = Sat
+      if (dow === 0 || dow === 6) {
+        const x = xForDate(utcDateToISO(dayCursor));
+        const band = document.createElementNS(svgNS, 'rect');
+        band.setAttribute('x', x);
+        band.setAttribute('y', HEADER_H);
+        band.setAttribute('width', pxPerDay);
+        band.setAttribute('height', svgHeight - HEADER_H);
+        band.setAttribute('fill', 'var(--weekend-band)');
+        band.setAttribute('pointer-events', 'none');
+        svg.appendChild(band);
+      }
+      dayCursor.setUTCDate(dayCursor.getUTCDate() + 1);
+    }
+
     // week gridlines (every Monday) — thin, subtle, with a short date tick
     const weekCursor = isoToUTCDate(minStart);
     while (weekCursor.getUTCDay() !== 1) weekCursor.setUTCDate(weekCursor.getUTCDate() - 1);
-    const maxEndDate = isoToUTCDate(maxEnd);
     while (weekCursor <= maxEndDate) {
       const iso = utcDateToISO(weekCursor);
       if (iso >= minStart) {

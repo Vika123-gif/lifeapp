@@ -21,7 +21,7 @@
   --good:           #0ca30c;   /* status: done */
   --warning:        #c98500;   /* status: paused */
   --planned-ink:    #6c4fd6;   /* status: planned (violet) */
-
+  --weekend-band:   rgba(108, 79, 214, 0.06); /* subtle shading behind Sat/Sun */
 
   --bg-gradient: linear-gradient(160deg, #eef1fd 0%, #dfe6fb 45%, #eef0fc 100%);
 
@@ -54,7 +54,7 @@
     --good:           #0ca30c;
     --warning:        #fab219;
     --planned-ink:    #a996ff;
-
+    --weekend-band:   rgba(255, 255, 255, 0.05);
 
     --bg-gradient: linear-gradient(160deg, #171326 0%, #1d1830 55%, #171326 100%);
   }
@@ -81,7 +81,7 @@
   --good:           #0ca30c;
   --warning:        #fab219;
   --planned-ink:    #a996ff;
-
+  --weekend-band:   rgba(255, 255, 255, 0.05);
 
   --bg-gradient: linear-gradient(160deg, #171326 0%, #1d1830 55%, #171326 100%);
 }
