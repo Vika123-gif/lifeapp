@@ -167,13 +167,15 @@ body {
   position: relative;
   display: flex;
   align-items: stretch;
+  flex-wrap: wrap;
   gap: 6px;
   background: var(--nav-bg);
   border-radius: 20px;
   padding: 8px;
 }
 .sphere-tab {
-  flex: 1;
+  flex: 1 1 88px;
+  min-width: 78px;
   display: flex;
   flex-direction: column;
   align-items: center;
