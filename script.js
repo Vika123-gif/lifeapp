@@ -179,7 +179,7 @@
       },
     );
 
-    return { people, projects, dayPlans: seedDayPlans() };
+    return { people, projects, dayPlans: seedDayPlans(), ascesis: seedAscesis() };
   }
 
   // day-by-day itinerary, keyed by trip name → ISO date
@@ -205,13 +205,24 @@
     };
   }
 
+  function seedAscesis() {
+    return {
+      start: todayISO(),
+      years: 2,
+      vow: 'Без сладкого. Кофе — сильно ограничить (можно изредка). Исключения — совсем небольшие, например в поездках.',
+      goal: 'Зачем я это делаю — цель на 2 года:\n\n• Стать известной на международном уровне в своей сфере.\n• Запустить свой продукт, большие клиенты, высокая маржа и доход.\n• Поднять заработок так, чтобы спокойно позволить себе новый Porsche и дом там, где захочу.\n• Работать моделью — лицо обложек, приглашения, амбассадор больших брендов (Gucci, Prada, Lancôme).\n• Познакомиться с актёром Лин Ичжоу и, возможно, сделать совместный проект.\n• Выучить английский и китайский.\n• Свой бизнес / телепродукт.\n• Внешность: отрастить волосы, выровнять зубы, наладить питание и кожу, улучшить фигуру — стать по-настоящему красивой.\n\nЖизнь меняется на 360°. Ради этого — держу аскезу.',
+      marks: {},
+    };
+  }
+
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const s = JSON.parse(raw);
-        // older saves predate day plans — backfill so the day strip isn't empty
+        // backfill for saves made before these modules existed
         if (!s.dayPlans) s.dayPlans = seedDayPlans();
+        if (!s.ascesis) s.ascesis = seedAscesis();
         return s;
       }
     } catch (e) { /* ignore corrupt storage */ }
@@ -244,6 +255,10 @@
       formProjectLabel: 'Путешествие',
       formProjectPlaceholder: 'Например, Италия на машине',
     },
+    ascesis: {
+      subtitle: 'Модуль «Аскеза»: обет и большая цель на 2 года',
+      sectionTitle: 'Аскеза',
+    },
   };
 
   function isDimmed(pr) {
@@ -251,7 +266,10 @@
   }
 
   function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ people: state.people, projects: state.projects, dayPlans: state.dayPlans || {} }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      people: state.people, projects: state.projects,
+      dayPlans: state.dayPlans || {}, ascesis: state.ascesis || null,
+    }));
   }
 
   function personName(id) {
@@ -328,9 +346,15 @@
     const cfg = SPHERES[activeSphere] || SPHERES.work;
     document.getElementById('heroSubtitle').textContent = cfg.subtitle;
     document.getElementById('sectionTitle').textContent = cfg.sectionTitle;
-    document.getElementById('addProject').textContent = cfg.addLabel;
-    document.getElementById('filterLabel').textContent = cfg.filterLabel;
-    document.getElementById('ganttEmpty').textContent = cfg.emptyNote;
+    // Аскеза has no projects/people — hide the add button and booking filter
+    const isProjectSphere = activeSphere === 'work' || activeSphere === 'travel';
+    document.getElementById('addProject').style.display = isProjectSphere ? '' : 'none';
+    document.getElementById('peopleFilterRow').style.display = isProjectSphere ? '' : 'none';
+    if (isProjectSphere) {
+      document.getElementById('addProject').textContent = cfg.addLabel;
+      document.getElementById('filterLabel').textContent = cfg.filterLabel;
+      document.getElementById('ganttEmpty').textContent = cfg.emptyNote;
+    }
     document.querySelectorAll('.sphere-tab[data-sphere]').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.sphere === activeSphere);
     });
@@ -910,6 +934,12 @@
     const emptyEl = document.getElementById('ganttEmpty');
     container.innerHTML = '';
 
+    if (activeSphere === 'ascesis') {
+      emptyEl.hidden = true;
+      renderAscesis(container);
+      return;
+    }
+
     const groups = groupedProjects();
     emptyEl.hidden = groups.length > 0;
 
@@ -1308,6 +1338,121 @@
     renderAll();
     toast('Данные сброшены');
   });
+
+  // ---------- Аскеза: обет + сетка на 2 года ----------
+  const MONTHS_RU = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  function renderAscesis(container) {
+    if (!state.ascesis) state.ascesis = seedAscesis();
+    const a = state.ascesis;
+    const t = todayISO();
+    const endIso = addDaysISO(a.start, a.years * 365 - 1);
+    const totalDays = a.years * 365;
+    const kept = Object.values(a.marks).filter(v => v === 'kept').length;
+    const broke = Object.values(a.marks).filter(v => v === 'broke').length;
+    // текущая серия: подряд идущие «kept» до сегодняшнего дня
+    let streak = 0;
+    for (let iso = t; iso >= a.start; iso = addDaysISO(iso, -1)) {
+      if (a.marks[iso] === 'kept') streak++; else break;
+    }
+    const passed = Math.max(0, Math.min(totalDays, Math.round((isoToUTCDate(t) - isoToUTCDate(a.start)) / DAY_MS) + 1));
+
+    // обет + серия
+    const head = document.createElement('section');
+    head.className = 'card ascesis-head';
+    head.innerHTML = `
+      <div class="ascesis-vow">🕊 <b>Мой обет:</b> ${escapeHtml(a.vow)}</div>
+      <div class="ascesis-stats">
+        <div class="ast-stat"><span class="ast-num">${streak}</span><span class="ast-lbl">дней подряд</span></div>
+        <div class="ast-stat"><span class="ast-num">${kept}</span><span class="ast-lbl">выдержано</span></div>
+        <div class="ast-stat"><span class="ast-num ast-broke">${broke}</span><span class="ast-lbl">срывов</span></div>
+        <div class="ast-stat"><span class="ast-num">${passed} / ${totalDays}</span><span class="ast-lbl">дней из 2 лет</span></div>
+      </div>`;
+    container.appendChild(head);
+
+    // цель на 2 года (редактируемая)
+    const goalCard = document.createElement('section');
+    goalCard.className = 'card';
+    const goalTitle = document.createElement('h2');
+    goalTitle.textContent = '🎯 Зачем — цель на 2 года';
+    const goalText = document.createElement('textarea');
+    goalText.className = 'ascesis-goal';
+    goalText.value = a.goal || '';
+    goalText.rows = Math.min(20, (a.goal || '').split('\n').length + 1);
+    goalText.addEventListener('change', () => { a.goal = goalText.value; save(); });
+    goalCard.appendChild(goalTitle);
+    goalCard.appendChild(goalText);
+    container.appendChild(goalCard);
+
+    // сетка ячеек по месяцам
+    const gridCard = document.createElement('section');
+    gridCard.className = 'card';
+    const gridTitle = document.createElement('h2');
+    gridTitle.textContent = 'Каждый день — ячейка. Клик: выдержал → сорвался → пусто';
+    gridCard.appendChild(gridTitle);
+
+    const cur = isoToUTCDate(a.start);
+    cur.setUTCDate(1);
+    const endDate = isoToUTCDate(endIso);
+    while (cur <= endDate) {
+      const y = cur.getUTCFullYear(), m = cur.getUTCMonth();
+      const row = document.createElement('div');
+      row.className = 'ast-month';
+      const lbl = document.createElement('div');
+      lbl.className = 'ast-month-lbl';
+      lbl.textContent = `${MONTHS_RU[m]} ${String(y).slice(2)}`;
+      row.appendChild(lbl);
+      const cells = document.createElement('div');
+      cells.className = 'ast-cells';
+      const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+      for (let d = 1; d <= daysInMonth; d++) {
+        const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        if (iso < a.start || iso > endIso) continue;
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'ast-cell'
+          + (a.marks[iso] ? ' ' + a.marks[iso] : '')
+          + (iso === t ? ' today' : '')
+          + (iso > t ? ' future' : '');
+        cell.textContent = d;
+        cell.title = iso;
+        cell.addEventListener('click', () => {
+          const nx = a.marks[iso] === 'kept' ? 'broke' : a.marks[iso] === 'broke' ? undefined : 'kept';
+          if (nx) a.marks[iso] = nx; else delete a.marks[iso];
+          save();
+          cell.classList.remove('kept', 'broke');
+          if (nx) cell.classList.add(nx);
+          updateAscesisStats(head);
+        });
+        cells.appendChild(cell);
+      }
+      row.appendChild(cells);
+      gridCard.appendChild(row);
+      cur.setUTCMonth(cur.getUTCMonth() + 1);
+    }
+    container.appendChild(gridCard);
+
+    // прокрутить к текущему месяцу
+    requestAnimationFrame(() => {
+      const todayCell = gridCard.querySelector('.ast-cell.today');
+      if (todayCell) todayCell.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  // пересчёт цифр статистики без пересборки страницы (чтобы экран не прыгал)
+  function updateAscesisStats(head) {
+    const a = state.ascesis;
+    const t = todayISO();
+    const kept = Object.values(a.marks).filter(v => v === 'kept').length;
+    const broke = Object.values(a.marks).filter(v => v === 'broke').length;
+    let streak = 0;
+    for (let iso = t; iso >= a.start; iso = addDaysISO(iso, -1)) {
+      if (a.marks[iso] === 'kept') streak++; else break;
+    }
+    const nums = head.querySelectorAll('.ast-num');
+    if (nums[0]) nums[0].textContent = streak;
+    if (nums[1]) nums[1].textContent = kept;
+    if (nums[2]) nums[2].textContent = broke;
+  }
 
   window.addEventListener('resize', () => { renderProjects(); });
 
