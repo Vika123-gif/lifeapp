@@ -2,6 +2,10 @@
   'use strict';
 
   const STORAGE_KEY = 'life-tracker-work-v1';
+  // Bump when the seeded travel itinerary changes so an already-saved browser
+  // auto-refreshes the trip on next load (without a manual reset, and without
+  // touching the user's Аскеза progress or their work projects).
+  const SEED_VERSION = 6;
   const ROW_H = 36;
   const HEADER_H = 30;
   const DAY_MS = 86400000;
@@ -184,7 +188,7 @@
       },
     );
 
-    return { people, projects, dayPlans: seedDayPlans(), ascesis: seedAscesis() };
+    return { people, projects, dayPlans: seedDayPlans(), ascesis: seedAscesis(), personal: seedPersonal(), seedVersion: SEED_VERSION };
   }
 
   // day-by-day itinerary, keyed by trip name → ISO date
@@ -220,6 +224,44 @@
     };
   }
 
+  function seedPersonal() {
+    const T = (group, text) => ({ id: uid(), group, text, done: false });
+    return {
+      yearGoals:
+        '🎯 ЦЕЛИ НА ГОД\n\n' +
+        'Ось года (из этого растёт всё остальное):\n' +
+        '• Успешно закрыть 3-месячный пилот Dr. Max (AdScale/EScale) с жёсткими метриками → получить команду → масштабировать продукт. (Если команду не дают — осторожно открыть вопрос внешних инвестиций.)\n\n' +
+        'Позиционирование:\n' +
+        '• Закрепиться как эксперт по маркетингу с бизнес-стороны — кейсы с цифрами и строгими метриками, а не «контент ради контента».\n\n' +
+        'Доход:\n' +
+        '• Поднять доход с €3000 до €5000. Очередь: сначала пилот → команда/масштаб + платные воркшопы. Курсы и платформа с уроками — второй эшелон, ближе к концу года, когда есть кейс и имя.\n\n' +
+        'Узнаваемость и поездки:\n' +
+        '• Стать известной за пределами Польши — командировки, воркшопы (Польша + соседние страны).\n' +
+        '• LinkedIn на английском: прогрев площадки → кейсы.\n\n' +
+        'Фон без дедлайнов (дисциплина):\n' +
+        '• Английский — 2 занятия в неделю.\n' +
+        '• Внешность и здоровье — фигура, кожа, волосы, здоровье.\n\n' +
+        'Парковка (не сейчас, запуск ПОСЛЕ команды):\n' +
+        '• Бизнес БАДы/желе с подругой + ниша здоровья/HF/биохакинга. Триггер запуска = пилот закрыт + есть команда. До этого только наблюдения.\n' +
+        '• Америка, Китай — год 2–3.',
+      weekNote: '📅 Последняя полная неделя дома перед Италией — закрываем то, что нельзя сделать оттуда.\n\nПропускаем на этой неделе: час разведки (неделя перед отъездом — закрываем, не сеем).',
+      weekTasks: [
+        T('🔴 Приоритет (если неделя сожмётся — только это)', 'Решение по цене Dr. Max: посчитать стоимость добавленных генераций, прежде чем соглашаться на €1000. Сначала цифра. Если добавка съедает маржу — потолок на объём или отдельная строка.'),
+        T('🔴 Приоритет (если неделя сожмётся — только это)', 'Бюрократия (день ногами, нельзя из Италии): запись на теорию по вождению + подача документов на паспорт + свидетельство о рождении на перевод/адаптацию.'),
+        T('🔴 Приоритет (если неделя сожмётся — только это)', 'MD/созвон с командой по разбору основных поинтов акта — срочно, до отъезда.'),
+        T('🟡 Работа-ось', 'Разбор комментариев Modivo с генератором (+ попросить вести лог цифр производства).'),
+        T('🟡 Работа-ось', 'Доработка продукта Dr. Max под 3 месяца — цель: «может жить без меня». Не «идеально».'),
+        T('🟡 Работа-ось', 'Тест гипотезы «видео из продуктового фида автоматически» — только проверка (час-два, да/нет), не проект.'),
+        T('🟡 Работа-ось', 'Подготовиться к 3 месяцам Dr. Max насколько возможно + скоординировать остальные проекты.'),
+        T('🟡 Работа-ось', 'Настроить логи метрик на обоих проектах перед Италией.'),
+        T('🟢 Фон', 'Спорт ×3 (йога вторник 17:00 + ещё 2).'),
+        T('🟢 Фон', 'Английский ×2.'),
+      ],
+      checkin: '✅ Воскресный чек-ин (2 минуты):\n1. Сдвинулась ли ось года — пилот Dr. Max?\n2. Что из недельного плана сделала, что нет и почему?\n3. Не залезла ли новая блестящая идея в две оси?',
+    };
+  }
+
+  let seedMigrated = false;
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -228,6 +270,17 @@
         // backfill for saves made before these modules existed
         if (!s.dayPlans) s.dayPlans = seedDayPlans();
         if (!s.ascesis) s.ascesis = seedAscesis();
+        if (!s.personal) s.personal = seedPersonal();
+        // When the seeded itinerary changed, refresh ONLY the travel trip and
+        // its day plans; keep work projects, people and Аскеза untouched.
+        if (s.seedVersion !== SEED_VERSION) {
+          const fresh = seedData();
+          s.projects = (s.projects || []).filter(p => (p.sphere || 'work') !== 'travel')
+            .concat(fresh.projects.filter(p => p.sphere === 'travel'));
+          s.dayPlans = Object.assign({}, s.dayPlans, fresh.dayPlans);
+          s.seedVersion = SEED_VERSION;
+          seedMigrated = true;
+        }
         return s;
       }
     } catch (e) { /* ignore corrupt storage */ }
@@ -264,6 +317,10 @@
       subtitle: 'Модуль «Аскеза»: обет и большая цель на 2 года',
       sectionTitle: 'Аскеза',
     },
+    personal: {
+      subtitle: 'Модуль «Личное»: цели на год и задачи на неделю',
+      sectionTitle: 'Личное',
+    },
   };
 
   function isDimmed(pr) {
@@ -274,8 +331,12 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       people: state.people, projects: state.projects,
       dayPlans: state.dayPlans || {}, ascesis: state.ascesis || null,
+      personal: state.personal || null,
+      seedVersion: state.seedVersion || SEED_VERSION,
     }));
   }
+  // persist the auto-migration (refreshed itinerary) once on startup
+  if (seedMigrated) save();
 
   function personName(id) {
     const p = state.people.find(x => x.id === id);
@@ -944,6 +1005,11 @@
       renderAscesis(container);
       return;
     }
+    if (activeSphere === 'personal') {
+      emptyEl.hidden = true;
+      renderPersonal(container);
+      return;
+    }
 
     const groups = groupedProjects();
     emptyEl.hidden = groups.length > 0;
@@ -1335,14 +1401,26 @@
   }
 
   // ---------- reset ----------
+  // Reset ONLY the current module — never wipe everything (that once cost the
+  // user her Аскеза streak). Other spheres and their data stay untouched.
+  const SPHERE_NAMES = { work: 'Работа', travel: 'Путешествия', ascesis: 'Аскеза', personal: 'Личное' };
   document.getElementById('resetAll').addEventListener('click', async () => {
-    if (!await confirmDialog('Сбросить всё к исходным данным? Текущие проекты и люди будут заменены.')) return;
-    localStorage.removeItem(STORAGE_KEY);
-    state = seedData();
-    filterPeople.clear();
+    const name = SPHERE_NAMES[activeSphere] || 'этот раздел';
+    if (!await confirmDialog(`Сбросить раздел «${name}» к исходному виду? Остальные разделы не тронутся.`)) return;
+    const fresh = seedData();
+    if (activeSphere === 'work' || activeSphere === 'travel') {
+      state.projects = state.projects.filter(p => (p.sphere || 'work') !== activeSphere)
+        .concat(fresh.projects.filter(p => (p.sphere || 'work') === activeSphere));
+      if (activeSphere === 'travel') state.dayPlans = Object.assign({}, state.dayPlans, fresh.dayPlans);
+      filterPeople.clear();
+    } else if (activeSphere === 'ascesis') {
+      state.ascesis = seedAscesis();
+    } else if (activeSphere === 'personal') {
+      state.personal = seedPersonal();
+    }
     save();
     renderAll();
-    toast('Данные сброшены');
+    toast(`Раздел «${name}» сброшен`);
   });
 
   // ---------- Аскеза: обет + сетка на 2 года ----------
@@ -1458,6 +1536,80 @@
     if (nums[0]) nums[0].textContent = streak;
     if (nums[1]) nums[1].textContent = kept;
     if (nums[2]) nums[2].textContent = broke;
+  }
+
+  // ---------- Личное: цели на год + задачи недели ----------
+  function autoGrow(ta) {
+    ta.rows = Math.min(30, Math.max(3, (ta.value || '').split('\n').length + 1));
+  }
+  function editableCard(container, title, value, onSave) {
+    const card = document.createElement('section');
+    card.className = 'card';
+    const h = document.createElement('h2');
+    h.textContent = title;
+    const ta = document.createElement('textarea');
+    ta.className = 'ascesis-goal';
+    ta.value = value || '';
+    autoGrow(ta);
+    ta.addEventListener('change', () => { onSave(ta.value); save(); });
+    card.appendChild(h);
+    card.appendChild(ta);
+    container.appendChild(card);
+  }
+
+  function renderPersonal(container) {
+    if (!state.personal) state.personal = seedPersonal();
+    const pd = state.personal;
+
+    editableCard(container, '🎯 Цели на год', pd.yearGoals, v => { pd.yearGoals = v; });
+
+    // задачи недели — чеклист по группам
+    const wk = document.createElement('section');
+    wk.className = 'card';
+    const wkH = document.createElement('h2');
+    wkH.textContent = '📅 Задачи на неделю';
+    wk.appendChild(wkH);
+    if (pd.weekNote) {
+      const note = document.createElement('div');
+      note.className = 'week-note';
+      note.textContent = pd.weekNote;
+      wk.appendChild(note);
+    }
+    const doneCount = pd.weekTasks.filter(x => x.done).length;
+    const prog = document.createElement('div');
+    prog.className = 'week-progress';
+    prog.textContent = `Сделано ${doneCount} из ${pd.weekTasks.length}`;
+    wk.appendChild(prog);
+
+    let lastGroup = null;
+    pd.weekTasks.forEach(task => {
+      if (task.group !== lastGroup) {
+        const g = document.createElement('div');
+        g.className = 'week-group';
+        g.textContent = task.group;
+        wk.appendChild(g);
+        lastGroup = task.group;
+      }
+      const row = document.createElement('label');
+      row.className = 'week-task' + (task.done ? ' done' : '');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!task.done;
+      cb.addEventListener('change', () => {
+        task.done = cb.checked;
+        row.classList.toggle('done', task.done);
+        prog.textContent = `Сделано ${pd.weekTasks.filter(x => x.done).length} из ${pd.weekTasks.length}`;
+        save();
+      });
+      const span = document.createElement('span');
+      span.textContent = task.text;
+      row.appendChild(cb);
+      row.appendChild(span);
+      wk.appendChild(row);
+    });
+    container.appendChild(wk);
+
+    editableCard(container, '✅ Воскресный чек-ин', pd.checkin, v => { pd.checkin = v; });
   }
 
   window.addEventListener('resize', () => { renderProjects(); });
