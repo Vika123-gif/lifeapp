@@ -188,7 +188,7 @@
       },
     );
 
-    return { people, projects, dayPlans: seedDayPlans(), ascesis: seedAscesis(), personal: seedPersonal(), seedVersion: SEED_VERSION };
+    return { people, projects, dayPlans: seedDayPlans(), ascesis: seedAscesis(), personal: seedPersonal(), food: seedFood(), seedVersion: SEED_VERSION };
   }
 
   // day-by-day itinerary, keyed by trip name → ISO date
@@ -261,6 +261,10 @@
     };
   }
 
+  function seedFood() {
+    return { days: {} };
+  }
+
   let seedMigrated = false;
   function loadState() {
     try {
@@ -271,6 +275,7 @@
         if (!s.dayPlans) s.dayPlans = seedDayPlans();
         if (!s.ascesis) s.ascesis = seedAscesis();
         if (!s.personal) s.personal = seedPersonal();
+        if (!s.food) s.food = seedFood();
         // When the seeded itinerary changed, refresh ONLY the travel trip and
         // its day plans; keep work projects, people and Аскеза untouched.
         if (s.seedVersion !== SEED_VERSION) {
@@ -321,6 +326,10 @@
       subtitle: 'Модуль «Личное»: цели на год и задачи на неделю',
       sectionTitle: 'Личное',
     },
+    food: {
+      subtitle: 'Модуль «Питание»: дневник по дням',
+      sectionTitle: 'Дневник питания',
+    },
   };
 
   function isDimmed(pr) {
@@ -331,7 +340,7 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       people: state.people, projects: state.projects,
       dayPlans: state.dayPlans || {}, ascesis: state.ascesis || null,
-      personal: state.personal || null,
+      personal: state.personal || null, food: state.food || null,
       seedVersion: state.seedVersion || SEED_VERSION,
     }));
   }
@@ -1010,6 +1019,11 @@
       renderPersonal(container);
       return;
     }
+    if (activeSphere === 'food') {
+      emptyEl.hidden = true;
+      renderFood(container);
+      return;
+    }
 
     const groups = groupedProjects();
     emptyEl.hidden = groups.length > 0;
@@ -1403,7 +1417,7 @@
   // ---------- reset ----------
   // Reset ONLY the current module — never wipe everything (that once cost the
   // user her Аскеза streak). Other spheres and their data stay untouched.
-  const SPHERE_NAMES = { work: 'Работа', travel: 'Путешествия', ascesis: 'Аскеза', personal: 'Личное' };
+  const SPHERE_NAMES = { work: 'Работа', travel: 'Путешествия', ascesis: 'Аскеза', personal: 'Личное', food: 'Питание' };
   document.getElementById('resetAll').addEventListener('click', async () => {
     const name = SPHERE_NAMES[activeSphere] || 'этот раздел';
     if (!await confirmDialog(`Сбросить раздел «${name}» к исходному виду? Остальные разделы не тронутся.`)) return;
@@ -1417,6 +1431,8 @@
       state.ascesis = seedAscesis();
     } else if (activeSphere === 'personal') {
       state.personal = seedPersonal();
+    } else if (activeSphere === 'food') {
+      state.food = seedFood();
     }
     save();
     renderAll();
@@ -1610,6 +1626,108 @@
     container.appendChild(wk);
 
     editableCard(container, '✅ Воскресный чек-ин', pd.checkin, v => { pd.checkin = v; });
+  }
+
+  // ---------- Питание: дневник по дням ----------
+  const FOOD_FIELDS = [
+    { key: 'breakfast', label: '🌅 Завтрак' },
+    { key: 'lunch', label: '☀️ Обед' },
+    { key: 'dinner', label: '🌙 Ужин' },
+    { key: 'snacks', label: '🍎 Перекусы' },
+    { key: 'note', label: '📝 Самочувствие / заметки' },
+  ];
+  let foodDate = null;
+  function fmtDateFull(iso) {
+    return isoToUTCDate(iso).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  }
+  function renderFood(container) {
+    if (!state.food) state.food = seedFood();
+    if (!foodDate) foodDate = todayISO();
+
+    const card = document.createElement('section');
+    card.className = 'card';
+
+    // навигация по датам
+    const nav = document.createElement('div');
+    nav.className = 'food-nav';
+    const prev = document.createElement('button');
+    prev.type = 'button'; prev.className = 'food-arrow'; prev.textContent = '‹';
+    const dateLbl = document.createElement('div');
+    dateLbl.className = 'food-date';
+    const next = document.createElement('button');
+    next.type = 'button'; next.className = 'food-arrow'; next.textContent = '›';
+    const todayBtn = document.createElement('button');
+    todayBtn.type = 'button'; todayBtn.className = 'btn btn-ghost btn-small'; todayBtn.textContent = 'Сегодня';
+    nav.appendChild(prev); nav.appendChild(dateLbl); nav.appendChild(next); nav.appendChild(todayBtn);
+    card.appendChild(nav);
+
+    const body = document.createElement('div');
+    card.appendChild(body);
+    container.appendChild(card);
+
+    function renderBody() {
+      const iso = foodDate;
+      dateLbl.textContent = fmtDateFull(iso) + (iso === todayISO() ? ' · сегодня' : '');
+      body.innerHTML = '';
+      const entry = state.food.days[iso] || {};
+      FOOD_FIELDS.forEach(f => {
+        const wrap = document.createElement('label');
+        wrap.className = 'food-field';
+        const lbl = document.createElement('span');
+        lbl.textContent = f.label;
+        const ta = document.createElement('textarea');
+        ta.className = 'ascesis-goal';
+        ta.rows = f.key === 'note' ? 2 : 2;
+        ta.placeholder = f.key === 'note' ? 'Как самочувствие, энергия, что заметила…' : 'Что ела, примерно…';
+        ta.value = entry[f.key] || '';
+        ta.addEventListener('change', () => {
+          if (!state.food.days[iso]) state.food.days[iso] = {};
+          state.food.days[iso][f.key] = ta.value.trim();
+          // если день опустел — убрать из списка
+          if (Object.values(state.food.days[iso]).every(v => !v)) delete state.food.days[iso];
+          save();
+          renderRecent();
+        });
+        wrap.appendChild(lbl); wrap.appendChild(ta);
+        body.appendChild(wrap);
+      });
+    }
+    prev.addEventListener('click', () => { foodDate = addDaysISO(foodDate, -1); renderBody(); });
+    next.addEventListener('click', () => { foodDate = addDaysISO(foodDate, 1); renderBody(); });
+    todayBtn.addEventListener('click', () => { foodDate = todayISO(); renderBody(); });
+    renderBody();
+
+    // список заполненных дней
+    const recentCard = document.createElement('section');
+    recentCard.className = 'card';
+    const rH = document.createElement('h2');
+    rH.textContent = 'Записи';
+    recentCard.appendChild(rH);
+    const recentList = document.createElement('div');
+    recentCard.appendChild(recentList);
+    container.appendChild(recentCard);
+
+    function renderRecent() {
+      const days = Object.keys(state.food.days).sort().reverse();
+      recentList.innerHTML = '';
+      if (!days.length) {
+        const e = document.createElement('div');
+        e.className = 'empty-note'; e.textContent = 'Пока пусто. Заполни день выше.';
+        recentList.appendChild(e);
+        return;
+      }
+      days.forEach(iso => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'food-recent' + (iso === foodDate ? ' active' : '');
+        const d = state.food.days[iso];
+        const summary = [d.breakfast, d.lunch, d.dinner, d.snacks].filter(Boolean).join(' · ').slice(0, 80);
+        row.innerHTML = `<b>${escapeHtml(fmtDate(iso))}</b> <span>${escapeHtml(summary || '—')}</span>`;
+        row.addEventListener('click', () => { foodDate = iso; renderBody(); renderRecent(); });
+        recentList.appendChild(row);
+      });
+    }
+    renderRecent();
   }
 
   window.addEventListener('resize', () => { renderProjects(); });

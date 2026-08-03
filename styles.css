@@ -611,6 +611,33 @@ body {
 .week-task input { margin-top: 2px; width: 17px; height: 17px; flex-shrink: 0; accent-color: var(--good); cursor: pointer; }
 .week-task.done span { color: var(--text-muted); text-decoration: line-through; }
 
+/* ---------- питание: дневник ---------- */
+.food-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.food-arrow {
+  width: 34px; height: 34px; flex-shrink: 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--page-plane);
+  color: var(--text-primary);
+  font-size: 20px; line-height: 1; cursor: pointer;
+}
+.food-arrow:hover { background: var(--gridline); }
+.food-date { flex: 1; text-align: center; font-size: 14px; font-weight: 700; text-transform: capitalize; }
+.food-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; font-size: 13px; font-weight: 700; color: var(--text-secondary); }
+.food-field textarea { font-weight: 400; }
+.food-recent {
+  display: flex; gap: 8px; align-items: baseline;
+  width: 100%; text-align: left;
+  padding: 10px 12px; margin-bottom: 6px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--page-plane); cursor: pointer;
+  font-size: 13px;
+}
+.food-recent:hover { border-color: var(--text-muted); }
+.food-recent.active { border-color: var(--brand); background: var(--brand-wash); }
+.food-recent b { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.food-recent span { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* ---------- footer ---------- */
 .footer {
   display: flex;
