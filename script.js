@@ -188,7 +188,7 @@
       },
     );
 
-    return { people, projects, dayPlans: seedDayPlans(), ascesis: seedAscesis(), personal: seedPersonal(), food: seedFood(), seedVersion: SEED_VERSION };
+    return { people, projects, dayPlans: seedDayPlans(), ascesis: seedAscesis(), personal: seedPersonal(), food: seedFood(), health: seedHealth(), seedVersion: SEED_VERSION };
   }
 
   // day-by-day itinerary, keyed by trip name → ISO date
@@ -265,6 +265,23 @@
     return { days: {} };
   }
 
+  function seedHealth() {
+    const G = (text) => ({ id: uid(), text, done: false, note: '' });
+    return {
+      goalWeight: null,
+      weights: {},   // iso -> кг
+      habits: {},    // iso -> { water, sport, vitamins, skin, hair }
+      goals: [
+        G('Отрастить волосы'),
+        G('Выровнять зубы'),
+        G('Наладить кожу'),
+        G('Улучшить фигуру'),
+        G('Наладить питание'),
+        G('Здоровье и энергия'),
+      ],
+    };
+  }
+
   let seedMigrated = false;
   function loadState() {
     try {
@@ -276,6 +293,7 @@
         if (!s.ascesis) s.ascesis = seedAscesis();
         if (!s.personal) s.personal = seedPersonal();
         if (!s.food) s.food = seedFood();
+        if (!s.health) s.health = seedHealth();
         // When the seeded itinerary changed, refresh ONLY the travel trip and
         // its day plans; keep work projects, people and Аскеза untouched.
         if (s.seedVersion !== SEED_VERSION) {
@@ -330,6 +348,10 @@
       subtitle: 'Модуль «Питание»: дневник по дням',
       sectionTitle: 'Дневник питания',
     },
+    health: {
+      subtitle: 'Модуль «Здоровье»: вес, привычки, внешность',
+      sectionTitle: 'Здоровье',
+    },
   };
 
   function isDimmed(pr) {
@@ -341,6 +363,7 @@
       people: state.people, projects: state.projects,
       dayPlans: state.dayPlans || {}, ascesis: state.ascesis || null,
       personal: state.personal || null, food: state.food || null,
+      health: state.health || null,
       seedVersion: state.seedVersion || SEED_VERSION,
     }));
   }
@@ -1024,6 +1047,11 @@
       renderFood(container);
       return;
     }
+    if (activeSphere === 'health') {
+      emptyEl.hidden = true;
+      renderHealth(container);
+      return;
+    }
 
     const groups = groupedProjects();
     emptyEl.hidden = groups.length > 0;
@@ -1417,7 +1445,7 @@
   // ---------- reset ----------
   // Reset ONLY the current module — never wipe everything (that once cost the
   // user her Аскеза streak). Other spheres and their data stay untouched.
-  const SPHERE_NAMES = { work: 'Работа', travel: 'Путешествия', ascesis: 'Аскеза', personal: 'Личное', food: 'Питание' };
+  const SPHERE_NAMES = { work: 'Работа', travel: 'Путешествия', ascesis: 'Аскеза', personal: 'Личное', food: 'Питание', health: 'Здоровье' };
   document.getElementById('resetAll').addEventListener('click', async () => {
     const name = SPHERE_NAMES[activeSphere] || 'этот раздел';
     if (!await confirmDialog(`Сбросить раздел «${name}» к исходному виду? Остальные разделы не тронутся.`)) return;
@@ -1433,6 +1461,8 @@
       state.personal = seedPersonal();
     } else if (activeSphere === 'food') {
       state.food = seedFood();
+    } else if (activeSphere === 'health') {
+      state.health = seedHealth();
     }
     save();
     renderAll();
@@ -1728,6 +1758,244 @@
       });
     }
     renderRecent();
+  }
+
+  // ---------- Здоровье: дашборд (вес + привычки + внешность) ----------
+  const HABITS = [
+    { key: 'water',    icon: '💧', label: 'Вода' },
+    { key: 'sport',    icon: '🏃', label: 'Спорт' },
+    { key: 'vitamins', icon: '💊', label: 'Витамины' },
+    { key: 'skin',     icon: '🧴', label: 'Кожа' },
+    { key: 'hair',     icon: '💆', label: 'Волосы' },
+  ];
+  const svgNS = 'http://www.w3.org/2000/svg';
+
+  function renderHealth(container) {
+    if (!state.health) state.health = seedHealth();
+    const h = state.health;
+    const t = todayISO();
+
+    // --- KPI: вес, изменение, привычек сегодня ---
+    const wDates = Object.keys(h.weights).sort();
+    const lastW = wDates.length ? h.weights[wDates[wDates.length - 1]] : null;
+    const prevW = wDates.length > 1 ? h.weights[wDates[wDates.length - 2]] : null;
+    const delta = (lastW != null && prevW != null) ? +(lastW - prevW).toFixed(1) : null;
+    const todayHabits = h.habits[t] || {};
+    const habitsDone = HABITS.filter(x => todayHabits[x.key]).length;
+
+    const kpi = document.createElement('section');
+    kpi.className = 'card health-kpi';
+    const deltaStr = delta == null ? '' :
+      `<span class="kpi-delta ${delta <= 0 ? 'good' : 'up'}">${delta > 0 ? '+' : ''}${delta} кг</span>`;
+    kpi.innerHTML = `
+      <div class="kpi-tile">
+        <span class="kpi-lbl">Вес</span>
+        <span class="kpi-val">${lastW != null ? lastW + ' <small>кг</small>' : '—'}</span>
+        ${deltaStr}
+      </div>
+      <div class="kpi-tile">
+        <span class="kpi-lbl">Цель по весу</span>
+        <span class="kpi-val">${h.goalWeight != null ? h.goalWeight + ' <small>кг</small>' : '—'}</span>
+      </div>
+      <div class="kpi-tile">
+        <span class="kpi-lbl">Привычки сегодня</span>
+        <span class="kpi-val">${habitsDone} <small>/ ${HABITS.length}</small></span>
+      </div>`;
+    container.appendChild(kpi);
+
+    // --- вес: график + добавить запись ---
+    const wCard = document.createElement('section');
+    wCard.className = 'card';
+    const wHead = document.createElement('div');
+    wHead.className = 'card-head';
+    wHead.innerHTML = '<h2>⚖️ Вес</h2>';
+    const wForm = document.createElement('div');
+    wForm.className = 'weight-add';
+    const wInput = document.createElement('input');
+    wInput.type = 'number'; wInput.step = '0.1'; wInput.inputMode = 'decimal';
+    wInput.placeholder = 'кг сегодня';
+    wInput.className = 'weight-input';
+    if (h.weights[t] != null) wInput.value = h.weights[t];
+    const wBtn = document.createElement('button');
+    wBtn.type = 'button'; wBtn.className = 'btn btn-primary btn-small'; wBtn.textContent = 'Записать';
+    const commitWeight = () => {
+      const v = parseFloat(wInput.value.replace(',', '.'));
+      if (!isNaN(v) && v > 0) h.weights[t] = +v.toFixed(1);
+      else delete h.weights[t];
+      save();
+      renderProjectsPreserveScroll();
+    };
+    wBtn.addEventListener('click', commitWeight);
+    wInput.addEventListener('keydown', e => { if (e.key === 'Enter') commitWeight(); });
+    wForm.appendChild(wInput); wForm.appendChild(wBtn);
+    wHead.appendChild(wForm);
+    wCard.appendChild(wHead);
+    wCard.appendChild(buildWeightChart(h.weights));
+    // цель по весу
+    const goalRow = document.createElement('div');
+    goalRow.className = 'weight-goal-row';
+    goalRow.innerHTML = '<span>Цель по весу, кг:</span>';
+    const gInput = document.createElement('input');
+    gInput.type = 'number'; gInput.step = '0.1'; gInput.className = 'weight-input';
+    gInput.style.maxWidth = '110px';
+    if (h.goalWeight != null) gInput.value = h.goalWeight;
+    gInput.addEventListener('change', () => {
+      const v = parseFloat(gInput.value.replace(',', '.'));
+      h.goalWeight = (!isNaN(v) && v > 0) ? +v.toFixed(1) : null;
+      save(); renderProjectsPreserveScroll();
+    });
+    goalRow.appendChild(gInput);
+    wCard.appendChild(goalRow);
+    container.appendChild(wCard);
+
+    // --- привычки: сегодня + неделя ---
+    const hCard = document.createElement('section');
+    hCard.className = 'card';
+    hCard.innerHTML = '<h2>✅ Привычки сегодня</h2>';
+    const chips = document.createElement('div');
+    chips.className = 'habit-chips';
+    HABITS.forEach(hb => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      const on = !!(h.habits[t] && h.habits[t][hb.key]);
+      chip.className = 'habit-chip' + (on ? ' on' : '');
+      chip.innerHTML = `<span>${hb.icon}</span> ${hb.label}`;
+      chip.addEventListener('click', () => {
+        if (!h.habits[t]) h.habits[t] = {};
+        h.habits[t][hb.key] = !h.habits[t][hb.key];
+        if (Object.values(h.habits[t]).every(v => !v)) delete h.habits[t];
+        save();
+        chip.classList.toggle('on');
+        // обновить KPI-плитку
+        const done = HABITS.filter(x => h.habits[t] && h.habits[t][x.key]).length;
+        const kv = kpi.querySelectorAll('.kpi-val')[2];
+        if (kv) kv.innerHTML = `${done} <small>/ ${HABITS.length}</small>`;
+        updateHabitWeek();
+      });
+      chips.appendChild(chip);
+    });
+    hCard.appendChild(chips);
+    // неделя: последние 7 дней, интенсивность = сколько привычек выполнено
+    const week = document.createElement('div');
+    week.className = 'habit-week';
+    hCard.appendChild(week);
+    function updateHabitWeek() {
+      week.innerHTML = '<span class="habit-week-lbl">Последние 7 дней:</span>';
+      for (let i = 6; i >= 0; i--) {
+        const iso = addDaysISO(t, -i);
+        const d = h.habits[iso] || {};
+        const n = HABITS.filter(x => d[x.key]).length;
+        const cell = document.createElement('div');
+        cell.className = 'habit-week-cell';
+        cell.style.opacity = n === 0 ? 0.25 : (0.3 + 0.7 * n / HABITS.length);
+        cell.title = `${fmtDate(iso)}: ${n}/${HABITS.length}`;
+        const dd = isoToUTCDate(iso);
+        cell.textContent = dd.getUTCDate();
+        week.appendChild(cell);
+      }
+    }
+    updateHabitWeek();
+    container.appendChild(hCard);
+
+    // --- цели по внешности ---
+    const gCard = document.createElement('section');
+    gCard.className = 'card';
+    gCard.innerHTML = '<h2>🌸 Внешность и здоровье — цели</h2>';
+    h.goals.forEach(g => {
+      const row = document.createElement('div');
+      row.className = 'health-goal' + (g.done ? ' done' : '');
+      const top = document.createElement('label');
+      top.className = 'health-goal-top';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = !!g.done;
+      const title = document.createElement('span');
+      title.className = 'health-goal-title';
+      title.textContent = g.text;
+      cb.addEventListener('change', () => { g.done = cb.checked; row.classList.toggle('done', g.done); save(); });
+      top.appendChild(cb); top.appendChild(title);
+      const note = document.createElement('input');
+      note.type = 'text'; note.className = 'health-goal-note';
+      note.placeholder = 'заметка / прогресс…';
+      note.value = g.note || '';
+      note.addEventListener('change', () => { g.note = note.value.trim(); save(); });
+      row.appendChild(top); row.appendChild(note);
+      gCard.appendChild(row);
+    });
+    container.appendChild(gCard);
+  }
+
+  // re-render the current sphere but keep the page's vertical scroll position
+  function renderProjectsPreserveScroll() {
+    const y = window.scrollY;
+    renderProjects();
+    window.scrollTo({ top: y });
+  }
+
+  function buildWeightChart(weights) {
+    const wrap = document.createElement('div');
+    wrap.className = 'weight-chart';
+    const dates = Object.keys(weights).sort();
+    if (dates.length < 2) {
+      const e = document.createElement('p');
+      e.className = 'empty-note';
+      e.textContent = dates.length ? 'Добавь ещё замер — и появится график динамики.' : 'Запиши вес — начнём отслеживать динамику.';
+      wrap.appendChild(e);
+      return wrap;
+    }
+    const W = 640, H = 180, padL = 34, padR = 12, padT = 12, padB = 22;
+    const vals = dates.map(d => weights[d]);
+    let min = Math.min(...vals), max = Math.max(...vals);
+    if (min === max) { min -= 1; max += 1; }
+    const pad = (max - min) * 0.15; min -= pad; max += pad;
+    const x0 = new Date(dates[0]).getTime(), x1 = new Date(dates[dates.length - 1]).getTime();
+    const xf = (iso) => padL + ((new Date(iso).getTime() - x0) / (x1 - x0 || 1)) * (W - padL - padR);
+    const yf = (v) => padT + (1 - (v - min) / (max - min)) * (H - padT - padB);
+
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'График веса');
+
+    // цель — пунктирная линия
+    if (state.health.goalWeight != null && state.health.goalWeight > min && state.health.goalWeight < max) {
+      const gy = yf(state.health.goalWeight);
+      const gl = document.createElementNS(svgNS, 'line');
+      gl.setAttribute('x1', padL); gl.setAttribute('x2', W - padR);
+      gl.setAttribute('y1', gy); gl.setAttribute('y2', gy);
+      gl.setAttribute('stroke', 'var(--good)'); gl.setAttribute('stroke-width', '1.5');
+      gl.setAttribute('stroke-dasharray', '4 4'); gl.setAttribute('opacity', '0.8');
+      svg.appendChild(gl);
+    }
+
+    const ptsArr = dates.map(d => [xf(d), yf(weights[d])]);
+    const linePts = ptsArr.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+    // area fill
+    const area = document.createElementNS(svgNS, 'polygon');
+    area.setAttribute('points', `${padL},${H - padB} ${linePts} ${(W - padR)},${H - padB}`);
+    area.setAttribute('fill', 'var(--series-1)'); area.setAttribute('opacity', '0.1');
+    svg.appendChild(area);
+    // line
+    const line = document.createElementNS(svgNS, 'polyline');
+    line.setAttribute('points', linePts);
+    line.setAttribute('fill', 'none'); line.setAttribute('stroke', 'var(--series-1)');
+    line.setAttribute('stroke-width', '2'); line.setAttribute('stroke-linejoin', 'round'); line.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(line);
+    // endpoint dot + value
+    const last = ptsArr[ptsArr.length - 1];
+    const dot = document.createElementNS(svgNS, 'circle');
+    dot.setAttribute('cx', last[0]); dot.setAttribute('cy', last[1]); dot.setAttribute('r', '4');
+    dot.setAttribute('fill', 'var(--series-1)'); dot.setAttribute('stroke', 'var(--surface-1)'); dot.setAttribute('stroke-width', '2');
+    svg.appendChild(dot);
+    // min/max y labels
+    [min + (max - min) * 0.15, max - (max - min) * 0.15].forEach(v => {
+      const tx = document.createElementNS(svgNS, 'text');
+      tx.setAttribute('x', 4); tx.setAttribute('y', yf(v) + 3);
+      tx.setAttribute('fill', 'var(--text-muted)'); tx.setAttribute('font-size', '10');
+      tx.textContent = v.toFixed(1);
+      svg.appendChild(tx);
+    });
+    wrap.appendChild(svg);
+    return wrap;
   }
 
   window.addEventListener('resize', () => { renderProjects(); });
