@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Система здоровья</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
+
+:root {
+  color-scheme: light;
+  --ground:    #f4f1ec;
+  --surface:   #fffdfa;
+  --surface-2: #ece6df;
+  --ink:       #251f2c;
+  --muted:     #6c6579;
+  --line:      rgba(37,31,44,0.11);
+  --shadow:    0 20px 46px rgba(58,40,78,0.13);
+  --shadow-sm: 0 8px 20px rgba(58,40,78,0.09);
+
+  --goal:    #c8527b;   /* цели — роза */
+  --lever:   #0f8578;   /* рычаги — бирюза */
+  --context: #7867a6;   /* контекст — фиолет */
+  --action:  #b06f26;   /* действие */
+  --help:    #0f8578;   /* помогает */
+  --hurt:    #c98428;   /* мешает / риск */
+  --check:   #7867a6;   /* проверить у врача */
+
+  --goal-wash:  rgba(200,82,123,0.10);
+  --lever-wash: rgba(15,133,120,0.10);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground:    #15121b;
+    --surface:   #201b28;
+    --surface-2: #2b2437;
+    --ink:       #f1ebf6;
+    --muted:     #9c94ac;
+    --line:      rgba(255,255,255,0.11);
+    --shadow:    0 20px 46px rgba(0,0,0,0.42);
+    --shadow-sm: 0 8px 20px rgba(0,0,0,0.34);
+
+    --goal:    #ec7099;
+    --lever:   #35b7aa;
+    --context: #a795d8;
+    --action:  #e0a250;
+    --help:    #35b7aa;
+    --hurt:    #e0a250;
+    --check:   #a795d8;
+
+    --goal-wash:  rgba(236,112,153,0.15);
+    --lever-wash: rgba(53,183,170,0.15);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground:    #15121b;
+  --surface:   #201b28;
+  --surface-2: #2b2437;
+  --ink:       #f1ebf6;
+  --muted:     #9c94ac;
+  --line:      rgba(255,255,255,0.11);
+  --shadow:    0 20px 46px rgba(0,0,0,0.42);
+  --shadow-sm: 0 8px 20px rgba(0,0,0,0.34);
+
+  --goal:    #ec7099;
+  --lever:   #35b7aa;
+  --context: #a795d8;
+  --action:  #e0a250;
+  --help:    #35b7aa;
+  --hurt:    #e0a250;
+  --check:   #a795d8;
+
+  --goal-wash:  rgba(236,112,153,0.15);
+  --lever-wash: rgba(53,183,170,0.15);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-inline: 20px;
+  padding-block: 34px 60px;
+}
+
+/* ---------- header ---------- */
+.head { margin-bottom: 26px; }
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lever);
+  margin: 0 0 8px;
+}
+h1 {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 600;
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1.04;
+  letter-spacing: -0.01em;
+  margin: 0 0 12px;
+  text-wrap: balance;
+}
+.lede {
+  max-width: 60ch;
+  font-size: 15.5px;
+  color: var(--muted);
+  margin: 0;
+}
+.lede b { color: var(--ink); font-weight: 600; }
+
+/* ---------- section framing ---------- */
+.section { margin-top: 40px; }
+.section-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 600;
+  font-size: 23px;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+.section-note { font-size: 13.5px; color: var(--muted); margin: 0 0 18px; }
+
+/* ---------- board (map + rail) ---------- */
+.board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 306px;
+  gap: 18px;
+  align-items: start;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+.map-card { padding: 12px; }
+.map-wrap { overflow-x: auto; }
+svg.map { display: block; width: 100%; min-width: 700px; height: auto; }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 12px 10px 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legend i { width: 20px; height: 0; border-top: 2.5px solid; border-radius: 2px; }
+.legend i.dashed { border-top-style: dashed; }
+.legend b { width: 10px; height: 10px; border-radius: 3px; border: 2px solid; background: transparent; }
+
+/* nodes */
+.node { cursor: pointer; }
+.node rect {
+  fill: var(--surface);
+  stroke-width: 1.6;
+  transition: opacity .18s, fill .18s;
+}
+.node.goal rect    { stroke: var(--goal); }
+.node.lever rect   { stroke: var(--lever); }
+.node.context rect { stroke: var(--context); stroke-dasharray: 3 3; }
+.node.flag rect    { stroke: var(--check); }
+.node.action rect  { stroke: var(--action); stroke-dasharray: 3 3; }
+.node .n-label { font-size: 14px; font-weight: 700; fill: var(--ink); }
+.node .n-sub   { font-size: 10.5px; font-weight: 500; fill: var(--muted); }
+.node .n-dot   { }
+.node.goal .n-dot    { fill: var(--goal); }
+.node.lever .n-dot   { fill: var(--lever); }
+.node.context .n-dot { fill: var(--context); }
+.node.flag .n-dot    { fill: var(--check); }
+.node.action .n-dot  { fill: var(--action); }
+.node:focus { outline: none; }
+.node:focus-visible rect { stroke-width: 3; }
+.node.sel rect { fill: var(--lever-wash); }
+.node.sel.goal rect { fill: var(--goal-wash); }
+.node.dim { opacity: 0.26; }
+
+/* edges */
+.edge { transition: opacity .18s; }
+.edge line { stroke-width: 1.5; fill: none; }
+.edge polygon { }
+.edge.help line, .edge.help polyline { stroke: var(--help); }
+.edge.help polygon { fill: var(--help); }
+.edge.hurt line, .edge.hurt polyline { stroke: var(--hurt); }
+.edge.hurt polygon { fill: var(--hurt); }
+.edge.check line, .edge.check polyline { stroke: var(--check); stroke-dasharray: 5 4; }
+.edge.check polygon { fill: var(--check); }
+.edge { opacity: 0.32; }
+.edge.on { opacity: 1; }
+.edge.on line, .edge.on polyline { stroke-width: 2.6; }
+.edge.faded { opacity: 0.06; }
+
+/* rail */
+.rail { padding: 18px; min-height: 220px; }
+.rail-hint { font-size: 13px; color: var(--muted); }
+.rail-hint b { color: var(--ink); }
+.rail h3 {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 600;
+  font-size: 20px;
+  margin: 0 0 2px;
+}
+.rail-kind {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+.rail-note { font-size: 13.5px; color: var(--ink); margin: 0 0 16px; }
+.rail-block { margin-top: 12px; }
+.rail-block h4 {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 7px;
+}
+.rel { display: flex; flex-wrap: wrap; gap: 6px; }
+.rel span {
+  font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 999px;
+  border: 1.5px solid var(--line);
+}
+.rel span.help  { border-color: var(--help);  color: var(--help); }
+.rel span.hurt  { border-color: var(--hurt);  color: var(--hurt); }
+.rel span.check { border-color: var(--check); color: var(--check); }
+.rail-reset {
+  margin-top: 16px; font: inherit; font-size: 12.5px; font-weight: 600;
+  color: var(--muted); background: none; border: none; cursor: pointer; padding: 0;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+
+/* ---------- insight cards ---------- */
+.insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); gap: 14px; }
+.insight {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 18px 20px;
+  box-shadow: var(--shadow-sm);
+}
+.insight .link {
+  display: inline-block;
+  font-size: 11.5px; font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--lever);
+  margin-bottom: 9px;
+}
+.insight h3 {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 600; font-size: 18px; line-height: 1.15;
+  margin: 0 0 8px; text-wrap: balance;
+}
+.insight p { font-size: 13.5px; color: var(--muted); margin: 0; }
+.insight p b { color: var(--ink); font-weight: 600; }
+
+/* ---------- action list ---------- */
+.actions { display: flex; flex-direction: column; gap: 10px; }
+.action-row {
+  display: flex; gap: 14px; align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+}
+.chip {
+  flex: 0 0 auto;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 5px 11px; border-radius: 999px;
+  border: 1.5px solid; white-space: nowrap;
+}
+.chip.help    { color: var(--help);    border-color: var(--help); }
+.chip.lever   { color: var(--lever);   border-color: var(--lever); }
+.chip.check   { color: var(--check);   border-color: var(--check); }
+.chip.goal    { color: var(--goal);    border-color: var(--goal); }
+.chip.context { color: var(--context); border-color: var(--context); }
+.action-row p { margin: 1px 0 0; font-size: 14px; }
+.action-row p b { font-weight: 700; }
+
+/* ---------- feed-me ---------- */
+.feed {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px 22px 24px;
+  box-shadow: var(--shadow-sm);
+}
+.feed h3 {
+  font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 20px; margin: 0 0 4px;
+}
+.feed .feed-sub { font-size: 13.5px; color: var(--muted); margin: 0 0 16px; }
+.feed ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 8px 18px; }
+.feed li {
+  position: relative; padding-left: 18px; font-size: 13.5px; color: var(--ink);
+}
+.feed li::before {
+  content: ""; position: absolute; left: 0; top: 8px;
+  width: 7px; height: 7px; border-radius: 2px; background: var(--lever);
+}
+
+.disclaimer {
+  margin-top: 30px; font-size: 12px; color: var(--muted); line-height: 1.6;
+  border-top: 1px solid var(--line); padding-top: 16px; max-width: 70ch;
+}
+
+@media (max-width: 860px) {
+  .board { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="head">
+    <p class="eyebrow">Доска · система</p>
+    <h1>Система здоровья</h1>
+    <p class="lede">Рабочая карта того, <b>что на что влияет</b>: слева — рычаги, которыми ты управляешь, справа — цели, которых хочешь. Нажми на любой узел, чтобы увидеть его связи. Ниже — взаимосвязи, которые я вижу, и решения. <b>Кидай мне детали в чат — я обновляю доску.</b></p>
+  </header>
+
+  <div class="board">
+    <div class="card map-card">
+      <div class="map-wrap">
+        <svg class="map" id="map" viewBox="0 0 1040 700" role="img" aria-label="Карта связей: рычаги образа жизни влияют на цели по здоровью и внешности"></svg>
+      </div>
+      <div class="legend">
+        <span><i style="border-color:var(--help)"></i> помогает цели</span>
+        <span><i style="border-color:var(--hurt)"></i> мешает / риск</span>
+        <span><i class="dashed" style="border-color:var(--check)"></i> проверить причину</span>
+        <span><b style="border-color:var(--lever)"></b> рычаг</span>
+        <span><b style="border-color:var(--goal)"></b> цель</span>
+        <span><b style="border-color:var(--context)"></b> контекст</span>
+      </div>
+    </div>
+
+    <aside class="card rail" id="rail">
+      <p class="rail-hint"><b>Как читать.</b> Стрелка идёт от рычага к цели: бирюза — помогает, янтарь — мешает, пунктир — «сначала проверь причину». Нажми узел — покажу все его связи здесь.</p>
+    </aside>
+  </div>
+
+  <section class="section">
+    <h2 class="section-title">Взаимосвязи, которые я вижу</h2>
+    <p class="section-note">Не отдельные цели, а одна система. Вот где спрятаны рычаги с максимальным эффектом.</p>
+    <div class="insights" id="insights"></div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Решения и следующие шаги</h2>
+    <p class="section-note">От «что делать вообще» к «что делать конкретно».</p>
+    <div class="actions" id="actions"></div>
+  </section>
+
+  <section class="section">
+    <div class="feed">
+      <h3>Чтобы уточнить карту — расскажи мне</h3>
+      <p class="feed-sub">Ответь на что-нибудь из этого в чате — и я перестрою связи под твою реальность, а не под общие правила.</p>
+      <ul id="questions"></ul>
+    </div>
+  </section>
+
+  <p class="disclaimer">Это рабочая гипотеза из того, что я уже знаю о тебе, а не медицинский совет. Всё клиническое — анализы (ферритин, витамин D, щитовидка), гормоны, зубы — подтверждай у врача и ортодонта: карта показывает, <i>куда смотреть</i>, а не ставит диагноз.</p>
+
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const SVG = "http://www.w3.org/2000/svg";
+  const map = document.getElementById("map");
+
+  // ---- geometry ----
+  const H = 46;
+  const G = { context: 140, lever: 178, goal: 152, action: 132 };
+
+  // node: id, label, sub, type, x(left), y(top), w, note
+  const nodes = [
+    // контекст (входящее)
+    { id:"work",  label:"Работа",   sub:"Dr. Max · Modivo · Cropp", type:"context", x:22,  y:60,  note:"Высокая нагрузка — главный источник стресса и недосыпа. Корень многих проблем с внешностью тянется отсюда, а не из косметички." },
+    { id:"italy", label:"Италия",   sub:"поездка скоро",            type:"context", x:22,  y:300, note:"Собьёт режим и аскезу — но солнце (витамин D), ходьба и отдых работают на кожу и энергию. Стратегия: удержать «ядро», отпустить контроль над сладким на неделю." },
+
+    // рычаги
+    { id:"sleep",     label:"Сон",       sub:"7–8 часов",          type:"lever", x:352, y:26,  note:"Недооценённый рычаг №1. Регенерация кожи, рост волос, энергия, контроль кортизола — всё завязано на сон." },
+    { id:"stress",    label:"Стресс",    sub:"кортизол",           type:"lever", x:352, y:112, note:"Хронический стресс = выпадение волос и тусклая кожа. Это не «нервы», это гормоны. Снижают: спорт, сон, границы в работе." },
+    { id:"ascesis",   label:"Аскеза",    sub:"−сахар · −кофе",     type:"lever", x:352, y:198, note:"Твой главный рычаг. Один обет бьёт по коже, фигуре и энергии сразу. А меньше кофе → лучше усваивается железо → волосы." },
+    { id:"nutrition", label:"Питание",   sub:"белок",              type:"lever", x:352, y:284, note:"Белок в каждый приём — это стройматериал для волос и мышц. База фигуры и восстановления." },
+    { id:"water",     label:"Вода",      sub:"",                   type:"lever", x:352, y:370, note:"Простой рычаг для кожи и энергии. Дешевле любого крема." },
+    { id:"sport",     label:"Спорт",     sub:"движение",           type:"lever", x:352, y:456, note:"Фигура, энергия, лучше сон, ниже стресс — один рычаг, четыре эффекта." },
+    { id:"vitamins",  label:"Витамины",  sub:"железо · D · цинк",  type:"lever", x:352, y:542, note:"Дефициты железа, витамина D, цинка бьют по волосам, коже и энергии. Но сначала анализы, потом добавки — не наугад." },
+    { id:"labs",      label:"Анализы",   sub:"ферритин · D · ТТГ", type:"flag",  x:352, y:628, note:"Проверить причины, а не гадать. Низкий ферритин и щитовидка — частые причины выпадения волос у женщин. → к врачу." },
+
+    // цели
+    { id:"hair",   label:"Волосы",  sub:"отрастить",  type:"goal", x:812, y:60,  note:"Растут изнутри: белок + железо + цинк + сон. Косметика вторична. Начни с ферритина." },
+    { id:"skin",   label:"Кожа",    sub:"наладить",   type:"goal", x:812, y:176, note:"Кожа — зеркало сна, сахара, воды и стресса. Аскеза и режим дадут больше, чем баночки ухода." },
+    { id:"figure", label:"Фигура",  sub:"улучшить",   type:"goal", x:812, y:292, note:"Питание (белок) + спорт + без сахара. Аскеза уже работает на эту цель." },
+    { id:"energy", label:"Энергия", sub:"здоровье",   type:"goal", x:812, y:408, note:"Итог всей системы. Если сон, питание и аскеза на месте — энергия приходит сама." },
+    { id:"teeth",  label:"Зубы",    sub:"выровнять",  type:"goal", x:812, y:600, note:"Единственная цель вне образа жизни. Её не «отрегулируешь» привычками — решает одно действие: консультация ортодонта." },
+
+    // действие
+    { id:"orto", label:"Ортодонт", sub:"запись", type:"action", x:596, y:600, note:"Один шаг закрывает цель «зубы». Не требует привычек — требует записаться." },
+  ];
+  const byId = {};
+  nodes.forEach(n => { n.w = G[n.type]; n.cy = n.y + H/2; byId[n.id] = n; });
+
+  // edge: from, to, pol(help|hurt|check)
+  const edges = [
+    ["sleep","skin","help"], ["sleep","energy","help"], ["sleep","hair","help"],
+    ["stress","hair","hurt"], ["stress","skin","hurt"], ["stress","energy","hurt"],
+    ["ascesis","skin","help"], ["ascesis","figure","help"], ["ascesis","energy","help"], ["ascesis","hair","help"],
+    ["nutrition","hair","help"], ["nutrition","figure","help"], ["nutrition","energy","help"], ["nutrition","skin","help"],
+    ["water","skin","help"], ["water","energy","help"],
+    ["sport","figure","help"], ["sport","energy","help"],
+    ["vitamins","hair","help"], ["vitamins","skin","help"], ["vitamins","energy","help"],
+    ["labs","hair","check"], ["labs","skin","check"], ["labs","energy","check"],
+    ["work","stress","hurt"], ["work","sleep","hurt"],
+    ["italy","ascesis","hurt"], ["italy","energy","help"],
+    ["orto","teeth","help"],
+  ].map(([from,to,pol]) => ({ from, to, pol }));
+
+  const relLabel = { help:"помогает", hurt:"мешает", check:"проверить" };
+
+  // ---- render edges (under nodes) ----
+  const edgeEls = [];
+  edges.forEach(e => {
+    const a = byId[e.from], b = byId[e.to];
+    const x1 = a.x + a.w, y1 = a.cy;
+    const x2 = b.x, y2 = b.cy;
+    const mx = (x1 + x2) / 2;
+    const g = document.createElementNS(SVG, "g");
+    g.setAttribute("class", "edge " + e.pol);
+    const path = document.createElementNS(SVG, "path");
+    path.setAttribute("d", `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2-9} ${y2}`);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "currentColor");
+    // use a <line>-styled path: color comes from CSS via class on <g>; set via child <path> we style as line
+    path.setAttribute("class", "e-line");
+    const head = document.createElementNS(SVG, "polygon");
+    head.setAttribute("points", `${x2},${y2} ${x2-9},${y2-4.5} ${x2-9},${y2+4.5}`);
+    g.appendChild(path);
+    g.appendChild(head);
+    map.appendChild(g);
+    e._g = g;
+    edgeEls.push(e);
+  });
+  // style e-line paths like edge lines (stroke inherits from class rules on line/polyline; add path)
+  const styleFix = document.createElementNS(SVG, "style");
+  styleFix.textContent = ".edge .e-line{fill:none;stroke-width:1.5}.edge.help .e-line{stroke:var(--help)}.edge.hurt .e-line{stroke:var(--hurt)}.edge.check .e-line{stroke:var(--check);stroke-dasharray:5 4}.edge.on .e-line{stroke-width:2.6}";
+  map.appendChild(styleFix);
+
+  // ---- render nodes ----
+  nodes.forEach(n => {
+    const g = document.createElementNS(SVG, "g");
+    g.setAttribute("class", "node " + n.type);
+    g.setAttribute("tabindex", "0");
+    g.setAttribute("role", "button");
+    g.setAttribute("aria-label", n.label);
+    const rect = document.createElementNS(SVG, "rect");
+    rect.setAttribute("x", n.x); rect.setAttribute("y", n.y);
+    rect.setAttribute("width", n.w); rect.setAttribute("height", H);
+    rect.setAttribute("rx", 12);
+    const dot = document.createElementNS(SVG, "circle");
+    dot.setAttribute("class", "n-dot");
+    dot.setAttribute("cx", n.x + 15); dot.setAttribute("cy", n.cy);
+    dot.setAttribute("r", 4);
+    const label = document.createElementNS(SVG, "text");
+    label.setAttribute("class", "n-label");
+    label.setAttribute("x", n.x + 28);
+    label.setAttribute("y", n.sub ? n.cy - 3 : n.cy + 5);
+    label.textContent = n.label;
+    g.appendChild(rect); g.appendChild(dot); g.appendChild(label);
+    if (n.sub) {
+      const sub = document.createElementNS(SVG, "text");
+      sub.setAttribute("class", "n-sub");
+      sub.setAttribute("x", n.x + 28);
+      sub.setAttribute("y", n.cy + 12);
+      sub.textContent = n.sub;
+      g.appendChild(sub);
+    }
+    g.addEventListener("click", () => select(n.id));
+    g.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(n.id); } });
+    n._g = g;
+    map.appendChild(g);
+  });
+
+  // background click clears
+  map.addEventListener("click", (ev) => { if (ev.target === map) clearSel(); });
+
+  // ---- selection ----
+  const rail = document.getElementById("rail");
+  const railDefault = rail.innerHTML;
+  let selected = null;
+
+  function clearSel() {
+    selected = null;
+    nodes.forEach(n => n._g.classList.remove("dim", "sel"));
+    edgeEls.forEach(e => e._g.classList.remove("on", "faded"));
+    rail.innerHTML = railDefault;
+  }
+
+  function select(id) {
+    if (selected === id) { clearSel(); return; }
+    selected = id;
+    const touch = new Set([id]);
+    edgeEls.forEach(e => {
+      const on = e.from === id || e.to === id;
+      e._g.classList.toggle("on", on);
+      e._g.classList.toggle("faded", !on);
+      if (on) { touch.add(e.from); touch.add(e.to); }
+    });
+    nodes.forEach(n => {
+      n._g.classList.toggle("dim", !touch.has(n.id));
+      n._g.classList.toggle("sel", n.id === id);
+    });
+    renderRail(id);
+  }
+
+  const kindMeta = {
+    lever:   { txt: "рычаг — ты этим управляешь", bg: "var(--lever-wash)", fg: "var(--lever)" },
+    goal:    { txt: "цель",                        bg: "var(--goal-wash)", fg: "var(--goal)" },
+    context: { txt: "контекст — входящее",         bg: "rgba(120,103,166,0.12)", fg: "var(--context)" },
+    flag:    { txt: "диагностика",                 bg: "rgba(120,103,166,0.12)", fg: "var(--check)" },
+    action:  { txt: "действие",                    bg: "rgba(176,111,38,0.12)",  fg: "var(--action)" },
+  };
+
+  function renderRail(id) {
+    const n = byId[id];
+    const out = edges.filter(e => e.from === id);
+    const inc = edges.filter(e => e.to === id);
+    const km = kindMeta[n.type];
+    const chips = arr => arr.map(e => {
+      const other = e.from === id ? byId[e.to] : byId[e.from];
+      return `<span class="${e.pol}">${other.label} · ${relLabel[e.pol]}</span>`;
+    }).join("");
+    let html = `<h3>${n.label}</h3>`;
+    html += `<span class="rail-kind" style="background:${km.bg};color:${km.fg}">${km.txt}</span>`;
+    html += `<p class="rail-note">${n.note}</p>`;
+    if (out.length) html += `<div class="rail-block"><h4>Влияет на</h4><div class="rel">${chips(out)}</div></div>`;
+    if (inc.length) html += `<div class="rail-block"><h4>Зависит от</h4><div class="rel">${chips(inc)}</div></div>`;
+    html += `<button class="rail-reset" id="railReset">← вся карта</button>`;
+    rail.innerHTML = html;
+    document.getElementById("railReset").addEventListener("click", clearSel);
+  }
+
+  // ---- insights ----
+  const insights = [
+    { link:"Аскеза → Кожа · Фигура · Энергия", title:"Аскеза — твой главный рычаг", html:"Один обет — <b>без сахара, меньше кофе</b> — бьёт сразу по трём целям. А меньше кофе улучшает усвоение железа, и это тянет ещё и волосы. Держать аскезу = лечить половину списка одним действием." },
+    { link:"Сон + Стресс → Волосы · Кожа", title:"Сон и стресс — скрытый корень", html:"При твоей нагрузке (Dr. Max, Modivo, Cropp) это узкое место. Никакие маски не перевесят хронический недосып и кортизол: волосы сыпятся, кожа тускнеет. <b>Это не «внешность» — это режим.</b>" },
+    { link:"Питание + Витамины + Анализы → Волосы", title:"Волосы растут изнутри", html:"Не из шампуня, а из <b>белка, железа, цинка и сна</b>. У женщин низкий ферритин — частая причина выпадения. Прежде чем покупать средства — сдать ферритин и витамин D." },
+    { link:"Зубы ← Ортодонт", title:"Зубы — единственная цель вне системы", html:"Их не отрегулируешь образом жизни. <b>Один шаг</b> — консультация ортодонта (элайнеры) — закрывает цель. Не нужны привычки, нужна запись." },
+    { link:"Италия → риск + ресурс", title:"Поездка работает в обе стороны", html:"Собьётся режим и аскеза — но <b>солнце, ходьба и отдых</b> — это плюс для кожи и энергии. Удержи ядро (белок, вода, сон), отпусти сладкое на неделю без вины." },
+  ];
+  document.getElementById("insights").innerHTML = insights.map(i =>
+    `<article class="insight"><span class="link">${i.link}</span><h3>${i.title}</h3><p>${i.html}</p></article>`
+  ).join("");
+
+  // ---- actions ----
+  const actions = [
+    { chip:"держать", tone:"help", html:"<b>Аскеза</b> уже в трекере — не бросать. Это рычаг, который двигает три цели сразу." },
+    { chip:"ядро режима", tone:"lever", html:"Три привычки с максимальным эффектом: <b>сон 7–8 ч · белок в каждый приём · вода</b>. С них — максимум отдачи по всем целям." },
+    { chip:"проверить у врача", tone:"check", html:"Анализы: <b>ферритин, витамин D, ТТГ (щитовидка)</b> — найти реальную причину выпадения волос, кожи и усталости." },
+    { chip:"сделать", tone:"goal", html:"<b>Зубы:</b> записаться на консультацию к ортодонту. Одно действие — и цель закрыта." },
+    { chip:"добавить", tone:"context", html:"В трекер здоровья добавить факторы <b>«сон» и «стресс»</b> — сейчас их там нет, а это два главных рычага." },
+  ];
+  document.getElementById("actions").innerHTML = actions.map(a =>
+    `<div class="action-row"><span class="chip ${a.tone}">${a.chip}</span><p>${a.html}</p></div>`
+  ).join("");
+
+  // ---- questions ----
+  const questions = [
+    "Сколько реально спишь и во сколько ложишься?",
+    "Уровень стресса сейчас от 1 до 10 — и главный источник?",
+    "Волосы: выпадают, медленно растут или ломаются? Сдавала ферритин / витамин D?",
+    "Кожа: что беспокоит — акне, сухость, тусклость?",
+    "Как выглядит обычный день по еде? Сколько примерно белка?",
+    "Цикл регулярный? (влияет на кожу, волосы, вес)",
+    "Кофе — сколько чашек и во сколько последняя?",
+    "Зубы — была уже у ортодонта, есть план или брекеты/элайнеры?",
+  ];
+  document.getElementById("questions").innerHTML = questions.map(q => `<li>${q}</li>`).join("");
+})();
+</script>
+</body>
+</html>
