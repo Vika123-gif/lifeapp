@@ -2000,6 +2000,91 @@
     renderStrip();
   }
 
+  // ---------- Здоровье: питание ↔ грибок и бактерии ----------
+  function renderHealthFoodLink(container) {
+    const card = document.createElement('section');
+    card.className = 'card';
+    card.innerHTML = '<h2>🍽️ Питание ↔ грибок и бактерии</h2>';
+
+    const mech = document.createElement('div');
+    mech.className = 'iss-obs';
+    mech.innerHTML = [
+      '🍄 <b>Грибок (кандида) любит сахар.</b> Сладкое и белая мука (рафинированные углеводы) поднимают сахар → больше «корма» для дрожжей.',
+      '🔥 <b>Мочевой раздражают кофе и соль.</b> Кофеин и солёное раздражают слизистую и делают мочу концентрированной → жжение после мочеиспускания усиливается. Вода — наоборот, разбавляет и вымывает.',
+    ].map(t => `<p>${t}</p>`).join('');
+    card.appendChild(mech);
+
+    const groupsTitle = document.createElement('div');
+    groupsTitle.className = 'iss-subhead';
+    groupsTitle.textContent = 'Как раскладываются продукты';
+    card.appendChild(groupsTitle);
+    const groups = [
+      { tone: 'bad',  label: 'Подталкивает не туда', items: ['сахар и сладости', 'белая мука, выпечка', 'кофе (натощак/много)', 'алкоголь', 'очень солёное', 'сладкие напитки, соки'] },
+      { tone: 'neut', label: 'Умеренно / нейтрально', items: ['хлеб на закваске', 'молочка (лактоза)', 'фрукты в меру'] },
+      { tone: 'good', label: 'Помогает / за', items: ['вода — много', 'овощи, клетчатка', 'белок', 'несладкий кефир/йогурт', 'клюква без сахара', 'D-манноза'] },
+    ];
+    const gWrap = document.createElement('div');
+    gWrap.className = 'fx-groups';
+    gWrap.innerHTML = groups.map(g =>
+      `<div class="fx-group">
+         <span class="fx-glbl ${g.tone}">${g.label}</span>
+         <div class="fx-chips">${g.items.map(it => `<span class="fx-chip ${g.tone}">${it}</span>`).join('')}</div>
+       </div>`
+    ).join('');
+    card.appendChild(gWrap);
+    container.appendChild(card);
+
+    // твои последние дни
+    const dayCard = document.createElement('section');
+    dayCard.className = 'card';
+    dayCard.innerHTML = '<h2>🗓️ Твои последние дни — как ложится</h2>';
+    const days = [
+      { emoji: '☕', tone: 'bad',  name: 'Кофе с молоком · 2 дня подряд', text: 'Кофе раздражает мочевой → жжение после туалета; молоко = немного сахара. Двойная причина сократить — и это ровно твоя аскеза.' },
+      { emoji: '🥐', tone: 'bad',  name: 'Круассаны · чт', text: 'Белая мука + сахар + масло = сахарный удар → «корм» для грибка. Классика «не при молочнице».' },
+      { emoji: '🍞', tone: 'neut', name: 'Хлеб на закваске · вчера и сегодня', text: 'Самый удачный выбор из списка: ферментированный, мягче скачок сахара. Ок в меру.' },
+      { emoji: '🍜', tone: 'bad',  name: 'Рамен · вчера вечером', text: 'Рафинированная лапша (углеводы) + очень солёный бульон → концентрированная моча → может усиливать жжение.' },
+    ];
+    const dList = document.createElement('div');
+    dList.className = 'fx-days';
+    dList.innerHTML = days.map(d =>
+      `<div class="fx-day">
+         <span class="fx-emoji">${d.emoji}</span>
+         <div><b>${d.name}</b><span class="fx-dot ${d.tone}"></span><p>${d.text}</p></div>
+       </div>`
+    ).join('');
+    dayCard.appendChild(dList);
+
+    const verdict = document.createElement('div');
+    verdict.className = 'iss-obs';
+    verdict.style.marginTop = '14px';
+    verdict.innerHTML = '<p>Крен в <b>рафинированные углеводы + кофе + соль</b>, и, вероятно, <b>мало воды</b>. Это подталкивает <b>обе версии сразу</b> — и грибок (сахар), и раздражение мочевого (кофе/соль). Закваска — единственный удачный выбор.</p>';
+    dayCard.appendChild(verdict);
+
+    const tipsTitle = document.createElement('div');
+    tipsTitle.className = 'iss-subhead';
+    tipsTitle.textContent = 'Что попробовать (безопасно, не лечение)';
+    dayCard.appendChild(tipsTitle);
+    const tips = [
+      'Больше <b>воды</b> — особенно если пьёшь кофе.',
+      'Пауза со <b>сладким и белой мукой</b> на несколько дней — это и есть аскеза, заодно чистый эксперимент: стихнет ли.',
+      '<b>Кофе</b> — сократить, не натощак и пораньше.',
+      'Несладкий <b>кефир/йогурт</b>, овощи, белок.',
+      'Отметь эти дни в <b>дневнике симптома</b> («что влияло») — сверим с жжением.',
+    ];
+    const ul = document.createElement('ul');
+    ul.className = 'fx-tips';
+    ul.innerHTML = tips.map(t => `<li>${t}</li>`).join('');
+    dayCard.appendChild(ul);
+
+    const honest = document.createElement('p');
+    honest.className = 'empty-note';
+    honest.style.marginTop = '12px';
+    honest.textContent = 'Это механизмы и зацепки для наблюдения, а не диагноз — что именно у тебя (грибок, бактерия или раздражение) решает посев у врача.';
+    dayCard.appendChild(honest);
+
+    container.appendChild(dayCard);
+  }
+
   // ---------- Здоровье: система «что на что влияет» ----------
   function renderHealthSystem(container) {
     const H = 46;
@@ -2190,6 +2275,7 @@
 
     // активная ситуация (жжение) + подготовка к врачу — самый верх
     renderHealthIssue(container);
+    renderHealthFoodLink(container);
 
     // система «что на что влияет»
     renderHealthSystem(container);

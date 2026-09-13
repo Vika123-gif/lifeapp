@@ -786,6 +786,33 @@ body {
 .iss-cell { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-muted); font-size: 12px; font-weight: 700; cursor: pointer; font-variant-numeric: tabular-nums; }
 .iss-cell:hover { border-color: var(--text-muted); }
 
+/* ---------- health: питание ↔ грибок/бактерии ---------- */
+.fx-groups { display: flex; flex-direction: column; gap: 12px; }
+.fx-group { display: flex; flex-direction: column; gap: 7px; }
+.fx-glbl { font-size: 12px; font-weight: 700; letter-spacing: 0.03em; display: inline-flex; align-items: center; gap: 7px; }
+.fx-glbl::before { content: ""; width: 10px; height: 10px; border-radius: 3px; }
+.fx-glbl.bad  { color: var(--feedback-ink); } .fx-glbl.bad::before  { background: var(--feedback-ink); }
+.fx-glbl.neut { color: var(--warning); }      .fx-glbl.neut::before { background: var(--warning); }
+.fx-glbl.good { color: var(--good); }          .fx-glbl.good::before { background: var(--good); }
+.fx-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fx-chip { font-size: 12.5px; font-weight: 600; padding: 5px 11px; border-radius: 999px; border: 1.5px solid var(--border); background: var(--page-plane); color: var(--text-secondary); }
+.fx-chip.bad  { border-color: var(--feedback-ink); color: var(--feedback-ink); }
+.fx-chip.neut { border-color: var(--warning); color: var(--warning); }
+.fx-chip.good { border-color: var(--good); color: var(--good); }
+.fx-days { display: flex; flex-direction: column; }
+.fx-day { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--gridline); }
+.fx-day:last-child { border-bottom: none; }
+.fx-emoji { font-size: 22px; flex: 0 0 auto; line-height: 1.2; }
+.fx-day > div { display: flex; flex-direction: column; gap: 3px; }
+.fx-day b { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.fx-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 2px 0; }
+.fx-dot.bad  { background: var(--feedback-ink); }
+.fx-dot.neut { background: var(--warning); }
+.fx-dot.good { background: var(--good); }
+.fx-day p { margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+.fx-tips { margin: 6px 0 0; padding-left: 20px; }
+.fx-tips li { font-size: 13.5px; line-height: 1.5; margin-bottom: 7px; color: var(--text-primary); }
+
 /* ---------- health module ---------- */
 .health-kpi {
   display: grid;
