@@ -279,6 +279,7 @@
         G('Наладить питание'),
         G('Здоровье и энергия'),
       ],
+      issue: { myNotes: '', log: {} },  // активная ситуация: жжение
     };
   }
 
@@ -294,6 +295,7 @@
         if (!s.personal) s.personal = seedPersonal();
         if (!s.food) s.food = seedFood();
         if (!s.health) s.health = seedHealth();
+        if (s.health && !s.health.issue) s.health.issue = { myNotes: '', log: {} };
         // When the seeded itinerary changed, refresh ONLY the travel trip and
         // its day plans; keep work projects, people and Аскеза untouched.
         if (s.seedVersion !== SEED_VERSION) {
@@ -1770,6 +1772,234 @@
   ];
   const svgNS = 'http://www.w3.org/2000/svg';
 
+  // ---------- Здоровье: активная ситуация (жжение) + подготовка к врачу ----------
+  function renderHealthIssue(container) {
+    if (!state.health.issue) state.health.issue = { myNotes: '', log: {} };
+    const iss = state.health.issue;
+
+    // --- карточка: ситуация + подготовка ---
+    const card = document.createElement('section');
+    card.className = 'card iss-card';
+    card.innerHTML = '<h2>🩺 Активная ситуация: жжение · к врачу во вторник</h2>';
+
+    const summary = document.createElement('p');
+    summary.className = 'iss-summary';
+    summary.innerHTML = 'Жжение в зоне вульвы и ануса, сильнее <b>после мочеиспускания</b>, потом слабеет; иногда проходит и возвращается у ануса. Проктолог — норма.';
+    card.appendChild(summary);
+
+    const tlTitle = document.createElement('div');
+    tlTitle.className = 'iss-subhead';
+    tlTitle.textContent = 'Как развивалось';
+    card.appendChild(tlTitle);
+    const timeline = [
+      { when: 'Раньше', text: 'Находили <b>E. coli</b>. Лечение — <b>Zumax</b> (азитромицин) + <b>D-манноза</b>. Прошло.' },
+      { when: 'Июль', text: 'Симптомы вернулись. Гинеколог назначил <b>флуконазол</b> (100 мг 7 дней, затем 200 мг еженедельно). <b>Не помогло.</b>' },
+      { when: 'Далее', text: 'Врач отменил флуконазол и назначил <b>Orungal</b> (итраконазол). Пока не начинала.' },
+      { when: 'Италия', text: 'Симптомы <b>прошли</b>. Работала так же, но было заметно <b>теплее</b>, другой быт и вода.' },
+      { when: 'Сейчас, дома', text: 'Симптомы <b>вернулись</b>.' },
+    ];
+    const tl = document.createElement('ul');
+    tl.className = 'iss-tl';
+    tl.innerHTML = timeline.map(e => `<li><span class="when">${e.when}</span><span>${e.text}</span></li>`).join('');
+    card.appendChild(tl);
+
+    const obsTitle = document.createElement('div');
+    obsTitle.className = 'iss-subhead';
+    obsTitle.textContent = 'Что я вижу';
+    card.appendChild(obsTitle);
+    const obs = document.createElement('div');
+    obs.className = 'iss-obs';
+    obs.innerHTML = [
+      'Противогрибковое (флуконазол) <b>не помогло</b> → причина может быть <b>не грибковой</b>. Тогда и второй противогрибковый (Orungal) может не сработать. Это решает <b>посев</b>.',
+      'История <b>E. coli</b> + жжение <b>после мочеиспускания</b> → бактериальная / урологическая версия недооценена.',
+      'Италия vs дом: в тепле стало <b>лучше</b>, а жара обычно <b>усиливает</b> грибок и раздражение — это скорее указывает на <b>что-то домашнее</b> (вода, стиралка, средства, бельё, стресс), чем на перегрев.',
+    ].map(t => `<p>${t}</p>`).join('');
+    card.appendChild(obs);
+
+    const qTitle = document.createElement('div');
+    qTitle.className = 'iss-subhead';
+    qTitle.textContent = 'Спросить у врача во вторник';
+    card.appendChild(qTitle);
+    const questions = [
+      'Можно сделать <b>посев ДО</b> нового препарата — мазок на флору+грибок с чувствительностью и <b>посев мочи</b>?',
+      'Если флуконазол не помог — почему это грибок? Не <b>бактерия (E. coli)</b> или <b>раздражение/дерматит</b>?',
+      '<span class="iss-flag">Orungal и беременность:</span> безопасно ли (препарат тератогенный)? Нужна ли контрацепция, проверка печени и взаимодействий с лекарствами?',
+      'Жжение <b>после мочеиспускания</b> — не посмотреть ли <b>мочевой/уретру</b> (уролог), а не только гинекологию?',
+      'Нужно ли направление к <b>специалисту по вульвовагинальным проблемам / дерматологу</b> при повторах?',
+    ];
+    const ol = document.createElement('ol');
+    ol.className = 'iss-q';
+    ol.innerHTML = questions.map(q => `<li>${q}</li>`).join('');
+    card.appendChild(ol);
+
+    const take = document.createElement('p');
+    take.className = 'iss-take';
+    take.innerHTML = '🎒 <b>Взять с собой:</b> список принятых препаратов и даты (Zumax, D-манноза, флуконазол, Orungal), прошлые результаты с E. coli, и обратить внимание — <b>есть ли выделения</b> или только жжение.';
+    card.appendChild(take);
+
+    const noteWrap = document.createElement('label');
+    noteWrap.className = 'iss-note';
+    noteWrap.innerHTML = '<span>Мои заметки и вопросы (допиши своё)</span>';
+    const noteTa = document.createElement('textarea');
+    noteTa.className = 'ascesis-goal';
+    noteTa.rows = 3;
+    noteTa.placeholder = 'Например: последняя менструация…, новый гель для душа…, что ещё спросить…';
+    noteTa.value = iss.myNotes || '';
+    noteTa.addEventListener('change', () => { iss.myNotes = noteTa.value.trim(); save(); });
+    noteWrap.appendChild(noteTa);
+    card.appendChild(noteWrap);
+
+    container.appendChild(card);
+
+    // --- карточка: дневник симптома ---
+    const logCard = document.createElement('section');
+    logCard.className = 'card';
+    logCard.innerHTML = '<h2>📓 Дневник симптома</h2>';
+    const logHint = document.createElement('p');
+    logHint.className = 'empty-note';
+    logHint.style.margin = '0 0 10px';
+    logHint.textContent = 'Отмечай по дням — так поймаем, от чего вспыхивает (дом или поездка, средства, стресс). Покажи это врачу.';
+    logCard.appendChild(logHint);
+
+    let logDate = todayISO();
+    const LVL = ['нет', 'слабо', 'средне', 'сильно'];
+
+    // навигация по датам
+    const nav = document.createElement('div');
+    nav.className = 'food-nav';
+    const prev = document.createElement('button');
+    prev.type = 'button'; prev.className = 'food-arrow'; prev.textContent = '‹';
+    const dateLbl = document.createElement('div');
+    dateLbl.className = 'food-date';
+    const next = document.createElement('button');
+    next.type = 'button'; next.className = 'food-arrow'; next.textContent = '›';
+    nav.appendChild(prev); nav.appendChild(dateLbl); nav.appendChild(next);
+    logCard.appendChild(nav);
+
+    const body = document.createElement('div');
+    logCard.appendChild(body);
+    const strip = document.createElement('div');
+    strip.className = 'iss-strip';
+    logCard.appendChild(strip);
+    container.appendChild(logCard);
+
+    function entryFor(iso) { return iss.log[iso] || {}; }
+    function cleanup(iso) {
+      const e = iss.log[iso];
+      if (e && (e.lvl == null && !e.disch && !e.loc && !e.away && !e.note)) delete iss.log[iso];
+    }
+
+    function renderBody() {
+      const iso = logDate;
+      dateLbl.textContent = fmtDateFull(iso) + (iso === todayISO() ? ' · сегодня' : '');
+      const e = entryFor(iso);
+      body.innerHTML = '';
+
+      // уровень
+      const lvlWrap = document.createElement('div');
+      lvlWrap.className = 'iss-field';
+      lvlWrap.innerHTML = '<span>Сила жжения</span>';
+      const lvls = document.createElement('div');
+      lvls.className = 'iss-lvls';
+      LVL.forEach((lbl, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'iss-lvl' + (e.lvl === i ? ' on lvl' + i : '');
+        b.textContent = i + ' · ' + lbl;
+        b.addEventListener('click', () => {
+          if (!iss.log[iso]) iss.log[iso] = {};
+          iss.log[iso].lvl = (iss.log[iso].lvl === i ? null : i);
+          cleanup(iso); save(); renderBody(); renderStrip();
+        });
+        lvls.appendChild(b);
+      });
+      lvlWrap.appendChild(lvls);
+      body.appendChild(lvlWrap);
+
+      // чипы: выделения, где, поездка
+      const chipsWrap = document.createElement('div');
+      chipsWrap.className = 'iss-field';
+      chipsWrap.innerHTML = '<span>Детали</span>';
+      const chips = document.createElement('div');
+      chips.className = 'habit-chips';
+      const toggles = [
+        { key: 'disch', label: '💧 Выделения' },
+        { key: 'away',  label: '✈️ В поездке' },
+      ];
+      toggles.forEach(tg => {
+        const c = document.createElement('button');
+        c.type = 'button';
+        c.className = 'habit-chip' + (e[tg.key] ? ' on' : '');
+        c.textContent = tg.label;
+        c.addEventListener('click', () => {
+          if (!iss.log[iso]) iss.log[iso] = {};
+          iss.log[iso][tg.key] = !iss.log[iso][tg.key];
+          cleanup(iso); save();
+          c.classList.toggle('on');
+        });
+        chips.appendChild(c);
+      });
+      // где: вульва / анус / оба
+      ['вульва', 'анус', 'оба'].forEach(loc => {
+        const c = document.createElement('button');
+        c.type = 'button';
+        c.className = 'habit-chip' + (e.loc === loc ? ' on' : '');
+        c.textContent = loc;
+        c.addEventListener('click', () => {
+          if (!iss.log[iso]) iss.log[iso] = {};
+          iss.log[iso].loc = (iss.log[iso].loc === loc ? '' : loc);
+          cleanup(iso); save(); renderBody();
+        });
+        chips.appendChild(c);
+      });
+      chipsWrap.appendChild(chips);
+      body.appendChild(chipsWrap);
+
+      // заметка дня
+      const noteWrap2 = document.createElement('label');
+      noteWrap2.className = 'iss-field';
+      noteWrap2.innerHTML = '<span>Что могло влиять (еда, средства, стресс, бельё)</span>';
+      const ta = document.createElement('textarea');
+      ta.className = 'ascesis-goal';
+      ta.rows = 2;
+      ta.value = e.note || '';
+      ta.placeholder = 'Например: новый гель, стирала бельё, стресс на работе, много кофе…';
+      ta.addEventListener('change', () => {
+        if (!iss.log[iso]) iss.log[iso] = {};
+        iss.log[iso].note = ta.value.trim();
+        cleanup(iso); save(); renderStrip();
+      });
+      noteWrap2.appendChild(ta);
+      body.appendChild(noteWrap2);
+    }
+
+    function renderStrip() {
+      strip.innerHTML = '<span class="iss-strip-lbl">Последние 14 дней:</span>';
+      for (let i = 13; i >= 0; i--) {
+        const iso = addDaysISO(todayISO(), -i);
+        const e = iss.log[iso] || {};
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'iss-cell';
+        if (e.lvl != null) {
+          cell.style.background = 'var(--warning)';
+          cell.style.opacity = String(0.28 + 0.24 * e.lvl);
+          cell.style.color = '#fff';
+        }
+        if (iso === logDate) cell.style.outline = '2px solid var(--brand)';
+        cell.title = fmtDate(iso) + (e.lvl != null ? ` · ${LVL[e.lvl]}` : ' · нет записи');
+        cell.textContent = isoToUTCDate(iso).getUTCDate();
+        cell.addEventListener('click', () => { logDate = iso; renderBody(); renderStrip(); });
+        strip.appendChild(cell);
+      }
+    }
+
+    prev.addEventListener('click', () => { logDate = addDaysISO(logDate, -1); renderBody(); renderStrip(); });
+    next.addEventListener('click', () => { logDate = addDaysISO(logDate, 1); renderBody(); renderStrip(); });
+    renderBody();
+    renderStrip();
+  }
+
   // ---------- Здоровье: система «что на что влияет» ----------
   function renderHealthSystem(container) {
     const H = 46;
@@ -1958,7 +2188,10 @@
     const h = state.health;
     const t = todayISO();
 
-    // система «что на что влияет» — верх блока
+    // активная ситуация (жжение) + подготовка к врачу — самый верх
+    renderHealthIssue(container);
+
+    // система «что на что влияет»
     renderHealthSystem(container);
 
     // --- KPI: вес, изменение, привычек сегодня ---
