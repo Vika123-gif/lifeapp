@@ -1770,10 +1770,196 @@
   ];
   const svgNS = 'http://www.w3.org/2000/svg';
 
+  // ---------- Здоровье: система «что на что влияет» ----------
+  function renderHealthSystem(container) {
+    const H = 46;
+    const GW = { context: 138, lever: 176, goal: 150, action: 130 };
+    const nodes = [
+      { id:'work',  label:'Работа',   sub:'Dr. Max · Modivo · Cropp', type:'context', x:16,  y:60,  note:'Высокая нагрузка — главный источник стресса и недосыпа. Корень многих проблем с внешностью тянется отсюда, а не из косметички.' },
+      { id:'italy', label:'Италия',   sub:'поездка скоро',            type:'context', x:16,  y:300, note:'Собьёт режим и аскезу — но солнце (витамин D), ходьба и отдых работают на кожу и энергию. Стратегия: удержать «ядро», отпустить сладкое на неделю.' },
+      { id:'sleep',     label:'Сон',       sub:'7–8 часов',          type:'lever', x:352, y:26,  note:'Недооценённый рычаг №1. Регенерация кожи, рост волос, энергия, контроль кортизола — всё завязано на сон.' },
+      { id:'stress',    label:'Стресс',    sub:'кортизол',           type:'lever', x:352, y:112, note:'Хронический стресс = выпадение волос и тусклая кожа. Это не «нервы», это гормоны. Снижают: спорт, сон, границы в работе.' },
+      { id:'ascesis',   label:'Аскеза',    sub:'−сахар · −кофе',     type:'lever', x:352, y:198, note:'Твой главный рычаг. Один обет бьёт по коже, фигуре и энергии сразу. А меньше кофе → лучше усваивается железо → волосы.' },
+      { id:'nutrition', label:'Питание',   sub:'белок',              type:'lever', x:352, y:284, note:'Белок в каждый приём — стройматериал для волос и мышц. База фигуры и восстановления.' },
+      { id:'water',     label:'Вода',      sub:'',                   type:'lever', x:352, y:370, note:'Простой рычаг для кожи и энергии. Дешевле любого крема.' },
+      { id:'sport',     label:'Спорт',     sub:'движение',           type:'lever', x:352, y:456, note:'Фигура, энергия, лучше сон, ниже стресс — один рычаг, четыре эффекта.' },
+      { id:'vitamins',  label:'Витамины',  sub:'железо · D · цинк',  type:'lever', x:352, y:542, note:'Дефициты железа, витамина D, цинка бьют по волосам, коже и энергии. Но сначала анализы, потом добавки — не наугад.' },
+      { id:'labs',      label:'Анализы',   sub:'ферритин · D · ТТГ', type:'flag',  x:352, y:628, note:'Проверить причины, а не гадать. Низкий ферритин и щитовидка — частые причины выпадения волос у женщин. → к врачу.' },
+      { id:'hair',   label:'Волосы',  sub:'отрастить',  type:'goal', x:812, y:60,  note:'Растут изнутри: белок + железо + цинк + сон. Косметика вторична. Начни с ферритина.' },
+      { id:'skin',   label:'Кожа',    sub:'наладить',   type:'goal', x:812, y:176, note:'Кожа — зеркало сна, сахара, воды и стресса. Аскеза и режим дадут больше, чем баночки ухода.' },
+      { id:'figure', label:'Фигура',  sub:'улучшить',   type:'goal', x:812, y:292, note:'Питание (белок) + спорт + без сахара. Аскеза уже работает на эту цель.' },
+      { id:'energy', label:'Энергия', sub:'здоровье',   type:'goal', x:812, y:408, note:'Итог всей системы. Если сон, питание и аскеза на месте — энергия приходит сама.' },
+      { id:'teeth',  label:'Зубы',    sub:'выровнять',  type:'goal', x:812, y:600, note:'Единственная цель вне образа жизни. Её не «отрегулируешь» привычками — решает одно действие: консультация ортодонта.' },
+      { id:'orto', label:'Ортодонт', sub:'запись', type:'action', x:596, y:600, note:'Один шаг закрывает цель «зубы». Не требует привычек — требует записаться.' },
+    ];
+    const byId = {};
+    nodes.forEach(n => { n.w = GW[n.type]; n.cy = n.y + H / 2; byId[n.id] = n; });
+    const edges = [
+      ['sleep','skin','help'], ['sleep','energy','help'], ['sleep','hair','help'],
+      ['stress','hair','hurt'], ['stress','skin','hurt'], ['stress','energy','hurt'],
+      ['ascesis','skin','help'], ['ascesis','figure','help'], ['ascesis','energy','help'], ['ascesis','hair','help'],
+      ['nutrition','hair','help'], ['nutrition','figure','help'], ['nutrition','energy','help'], ['nutrition','skin','help'],
+      ['water','skin','help'], ['water','energy','help'],
+      ['sport','figure','help'], ['sport','energy','help'],
+      ['vitamins','hair','help'], ['vitamins','skin','help'], ['vitamins','energy','help'],
+      ['labs','hair','check'], ['labs','skin','check'], ['labs','energy','check'],
+      ['work','stress','hurt'], ['work','sleep','hurt'],
+      ['italy','ascesis','hurt'], ['italy','energy','help'],
+      ['orto','teeth','help'],
+    ].map(([from, to, pol]) => ({ from, to, pol }));
+    const relLabel = { help: 'помогает', hurt: 'мешает', check: 'проверить' };
+    const kindMeta = { lever: 'рычаг — ты управляешь', goal: 'цель', context: 'контекст', flag: 'диагностика', action: 'действие' };
+
+    // --- карта ---
+    const mapCard = document.createElement('section');
+    mapCard.className = 'card';
+    mapCard.innerHTML = '<h2>🧭 Система: что на что влияет</h2>';
+    const hint = document.createElement('p');
+    hint.className = 'empty-note';
+    hint.style.margin = '0 0 8px';
+    hint.textContent = 'Слева — рычаги, которыми ты управляешь, справа — цели. Нажми на узел, чтобы увидеть его связи.';
+    mapCard.appendChild(hint);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'hs-map-wrap';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', 'hs-map');
+    svg.setAttribute('viewBox', '0 0 990 700');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Карта связей: рычаги образа жизни влияют на цели по здоровью');
+    wrap.appendChild(svg);
+    mapCard.appendChild(wrap);
+
+    const edgeEls = [];
+    edges.forEach(e => {
+      const a = byId[e.from], b = byId[e.to];
+      const x1 = a.x + a.w, y1 = a.cy, x2 = b.x, y2 = b.cy, mx = (x1 + x2) / 2;
+      const g = document.createElementNS(svgNS, 'g');
+      g.setAttribute('class', 'hs-edge ' + e.pol);
+      const ln = document.createElementNS(svgNS, 'path');
+      ln.setAttribute('class', 'ln');
+      ln.setAttribute('d', `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2 - 9} ${y2}`);
+      const head = document.createElementNS(svgNS, 'polygon');
+      head.setAttribute('points', `${x2},${y2} ${x2 - 9},${y2 - 4.5} ${x2 - 9},${y2 + 4.5}`);
+      g.appendChild(ln); g.appendChild(head);
+      svg.appendChild(g);
+      e._g = g;
+      edgeEls.push(e);
+    });
+
+    nodes.forEach(n => {
+      const g = document.createElementNS(svgNS, 'g');
+      g.setAttribute('class', 'hs-node ' + n.type);
+      g.setAttribute('tabindex', '0');
+      g.setAttribute('role', 'button');
+      g.setAttribute('aria-label', n.label);
+      const rect = document.createElementNS(svgNS, 'rect');
+      rect.setAttribute('x', n.x); rect.setAttribute('y', n.y);
+      rect.setAttribute('width', n.w); rect.setAttribute('height', H); rect.setAttribute('rx', 12);
+      const dot = document.createElementNS(svgNS, 'circle');
+      dot.setAttribute('class', 'd');
+      dot.setAttribute('cx', n.x + 15); dot.setAttribute('cy', n.cy); dot.setAttribute('r', 4);
+      const label = document.createElementNS(svgNS, 'text');
+      label.setAttribute('class', 'l');
+      label.setAttribute('x', n.x + 28); label.setAttribute('y', n.sub ? n.cy - 3 : n.cy + 5);
+      label.textContent = n.label;
+      g.appendChild(rect); g.appendChild(dot); g.appendChild(label);
+      if (n.sub) {
+        const sub = document.createElementNS(svgNS, 'text');
+        sub.setAttribute('class', 's');
+        sub.setAttribute('x', n.x + 28); sub.setAttribute('y', n.cy + 12);
+        sub.textContent = n.sub;
+        g.appendChild(sub);
+      }
+      g.addEventListener('click', () => select(n.id));
+      g.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); select(n.id); } });
+      n._g = g;
+      svg.appendChild(g);
+    });
+
+    const detail = document.createElement('div');
+    detail.className = 'hs-detail';
+    const detailDefault = 'Нажми на любой узел карты — покажу его связи и что с ним делать.';
+    detail.textContent = detailDefault;
+    mapCard.appendChild(detail);
+    container.appendChild(mapCard);
+
+    let selected = null;
+    function clearSel() {
+      selected = null;
+      nodes.forEach(n => n._g.classList.remove('dim', 'sel'));
+      edgeEls.forEach(e => e._g.classList.remove('on', 'faded'));
+      detail.textContent = detailDefault;
+    }
+    function select(id) {
+      if (selected === id) { clearSel(); return; }
+      selected = id;
+      const touch = new Set([id]);
+      edgeEls.forEach(e => {
+        const on = e.from === id || e.to === id;
+        e._g.classList.toggle('on', on);
+        e._g.classList.toggle('faded', !on);
+        if (on) { touch.add(e.from); touch.add(e.to); }
+      });
+      nodes.forEach(n => {
+        n._g.classList.toggle('dim', !touch.has(n.id));
+        n._g.classList.toggle('sel', n.id === id);
+      });
+      const n = byId[id];
+      const out = edges.filter(e => e.from === id);
+      const inc = edges.filter(e => e.to === id);
+      const chips = arr => arr.map(e => {
+        const other = e.from === id ? byId[e.to] : byId[e.from];
+        return `<span class="${e.pol}">${other.label} · ${relLabel[e.pol]}</span>`;
+      }).join('');
+      let html = `<h4>${n.label}</h4><span class="kind">${kindMeta[n.type]}</span><p>${n.note}</p>`;
+      if (out.length) html += `<div class="hs-rel"><span class="rl">Влияет на</span>${chips(out)}</div>`;
+      if (inc.length) html += `<div class="hs-rel"><span class="rl">Зависит от</span>${chips(inc)}</div>`;
+      detail.innerHTML = html;
+    }
+
+    // --- взаимосвязи ---
+    const insights = [
+      { link: 'Аскеза → Кожа · Фигура · Энергия', title: 'Аскеза — твой главный рычаг', html: 'Один обет — <b>без сахара, меньше кофе</b> — бьёт сразу по трём целям. А меньше кофе улучшает усвоение железа, и это тянет ещё и волосы. Держать аскезу = лечить половину списка одним действием.' },
+      { link: 'Сон + Стресс → Волосы · Кожа', title: 'Сон и стресс — скрытый корень', html: 'При твоей нагрузке это узкое место. Никакие маски не перевесят хронический недосып и кортизол: волосы сыпятся, кожа тускнеет. <b>Это не «внешность» — это режим.</b>' },
+      { link: 'Питание + Витамины + Анализы → Волосы', title: 'Волосы растут изнутри', html: 'Не из шампуня, а из <b>белка, железа, цинка и сна</b>. У женщин низкий ферритин — частая причина выпадения. Прежде чем покупать средства — сдать ферритин и витамин D.' },
+      { link: 'Зубы ← Ортодонт', title: 'Зубы — единственная цель вне системы', html: 'Их не отрегулируешь образом жизни. <b>Один шаг</b> — консультация ортодонта (элайнеры) — закрывает цель. Не нужны привычки, нужна запись.' },
+      { link: 'Италия → риск + ресурс', title: 'Поездка работает в обе стороны', html: 'Собьётся режим и аскеза — но <b>солнце, ходьба и отдых</b> — это плюс для кожи и энергии. Удержи ядро (белок, вода, сон), отпусти сладкое на неделю без вины.' },
+    ];
+    const insCard = document.createElement('section');
+    insCard.className = 'card';
+    insCard.innerHTML = '<h2>🔗 Взаимосвязи, которые я вижу</h2>';
+    const insGrid = document.createElement('div');
+    insGrid.className = 'hs-insights';
+    insGrid.innerHTML = insights.map(i => `<article class="hs-insight"><span class="lk">${i.link}</span><h4>${i.title}</h4><p>${i.html}</p></article>`).join('');
+    insCard.appendChild(insGrid);
+    container.appendChild(insCard);
+
+    // --- решения ---
+    const actions = [
+      { chip: 'держать', tone: 'help', html: '<b>Аскеза</b> уже в трекере — не бросать. Это рычаг, который двигает три цели сразу.' },
+      { chip: 'ядро режима', tone: 'lever', html: 'Три привычки с максимальным эффектом: <b>сон 7–8 ч · белок в каждый приём · вода</b>.' },
+      { chip: 'проверить у врача', tone: 'check', html: 'Анализы: <b>ферритин, витамин D, ТТГ (щитовидка)</b> — найти реальную причину волос, кожи и усталости.' },
+      { chip: 'сделать', tone: 'goal', html: '<b>Зубы:</b> записаться на консультацию к ортодонту. Одно действие — и цель закрыта.' },
+      { chip: 'добавить', tone: 'context', html: 'В привычки ниже добавь отслеживание <b>сна</b> — сейчас его нет, а это главный рычаг.' },
+    ];
+    const actCard = document.createElement('section');
+    actCard.className = 'card';
+    actCard.innerHTML = '<h2>✅ Решения и следующие шаги</h2>';
+    const actList = document.createElement('div');
+    actList.className = 'hs-actions';
+    actList.innerHTML = actions.map(a => `<div class="hs-act"><span class="hs-chip ${a.tone}">${a.chip}</span><p>${a.html}</p></div>`).join('');
+    actCard.appendChild(actList);
+    container.appendChild(actCard);
+  }
+
   function renderHealth(container) {
     if (!state.health) state.health = seedHealth();
     const h = state.health;
     const t = todayISO();
+
+    // система «что на что влияет» — верх блока
+    renderHealthSystem(container);
 
     // --- KPI: вес, изменение, привычек сегодня ---
     const wDates = Object.keys(h.weights).sort();

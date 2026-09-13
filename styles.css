@@ -694,6 +694,62 @@ body {
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* ---------- health: система «что на что влияет» ---------- */
+.hs-map-wrap { overflow-x: auto; margin-top: 4px; }
+.hs-map { display: block; width: 100%; min-width: 660px; height: auto; }
+.hs-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; font-size: 12px; color: var(--text-secondary); }
+.hs-node { cursor: pointer; }
+.hs-node rect { fill: var(--surface-1); stroke-width: 1.6; transition: opacity .15s; }
+.hs-node.lever rect   { stroke: var(--series-1); }
+.hs-node.goal rect    { stroke: var(--feedback-ink); }
+.hs-node.context rect { stroke: var(--planned-ink); stroke-dasharray: 3 3; }
+.hs-node.flag rect    { stroke: var(--planned-ink); }
+.hs-node.action rect  { stroke: var(--warning); stroke-dasharray: 3 3; }
+.hs-node .l { font-size: 14px; font-weight: 700; fill: var(--text-primary); }
+.hs-node .s { font-size: 10.5px; font-weight: 500; fill: var(--text-muted); }
+.hs-node.lever .d   { fill: var(--series-1); }
+.hs-node.goal .d    { fill: var(--feedback-ink); }
+.hs-node.context .d { fill: var(--planned-ink); }
+.hs-node.flag .d    { fill: var(--planned-ink); }
+.hs-node.action .d  { fill: var(--warning); }
+.hs-node.sel rect { stroke-width: 2.8; }
+.hs-node.dim { opacity: 0.26; }
+.hs-node:focus { outline: none; }
+.hs-node:focus-visible rect { stroke-width: 3; }
+.hs-edge { opacity: 0.34; transition: opacity .15s; }
+.hs-edge .ln { fill: none; stroke-width: 1.5; }
+.hs-edge.help .ln  { stroke: var(--good); }    .hs-edge.help polygon  { fill: var(--good); }
+.hs-edge.hurt .ln  { stroke: var(--warning); } .hs-edge.hurt polygon  { fill: var(--warning); }
+.hs-edge.check .ln { stroke: var(--planned-ink); stroke-dasharray: 5 4; } .hs-edge.check polygon { fill: var(--planned-ink); }
+.hs-edge.on { opacity: 1; } .hs-edge.on .ln { stroke-width: 2.6; }
+.hs-edge.faded { opacity: 0.06; }
+.hs-detail { margin-top: 12px; background: var(--page-plane); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; font-size: 13.5px; color: var(--text-secondary); min-height: 56px; }
+.hs-detail h4 { margin: 0 0 2px; font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.hs-detail .kind { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+.hs-detail p { margin: 0 0 10px; color: var(--text-primary); }
+.hs-rel { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.hs-rel .rl { width: 100%; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }
+.hs-rel span:not(.rl) { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1.5px solid var(--border); }
+.hs-rel span.help  { border-color: var(--good);    color: var(--good); }
+.hs-rel span.hurt  { border-color: var(--warning); color: var(--warning); }
+.hs-rel span.check { border-color: var(--planned-ink); color: var(--planned-ink); }
+.hs-insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.hs-insight { background: var(--page-plane); border: 1px solid var(--border); border-radius: 14px; padding: 15px 16px; }
+.hs-insight .lk { display: block; font-size: 11px; font-weight: 700; color: var(--series-1); margin-bottom: 7px; }
+.hs-insight h4 { margin: 0 0 6px; font-size: 15px; font-weight: 700; line-height: 1.2; }
+.hs-insight p { margin: 0; font-size: 13px; color: var(--text-secondary); }
+.hs-insight p b { color: var(--text-primary); font-weight: 600; }
+.hs-actions { display: flex; flex-direction: column; gap: 8px; }
+.hs-act { display: flex; gap: 12px; align-items: flex-start; background: var(--page-plane); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+.hs-chip { flex: 0 0 auto; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; border: 1.5px solid; white-space: nowrap; }
+.hs-chip.help    { color: var(--good);        border-color: var(--good); }
+.hs-chip.lever   { color: var(--series-1);    border-color: var(--series-1); }
+.hs-chip.check   { color: var(--planned-ink); border-color: var(--planned-ink); }
+.hs-chip.goal    { color: var(--feedback-ink); border-color: var(--feedback-ink); }
+.hs-chip.context { color: var(--planned-ink); border-color: var(--planned-ink); }
+.hs-act p { margin: 0; font-size: 13.5px; }
+.hs-act p b { font-weight: 700; }
+
 /* ---------- health module ---------- */
 .health-kpi {
   display: grid;
